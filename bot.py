@@ -12,6 +12,7 @@ session_time = config["session"]["time"]
 session_day = config["session"]["day"]
 channel_id = int(config["discord"]["channelID"])
 bot_prefix = config["discord"]["botPrefix"]
+dm_id = config["discord"]["dmID"]
 
 
 # Bot init
@@ -56,7 +57,7 @@ async def _accept(ctx):
     user_name = ctx.message.author.name
     if is_on_rsvp_accept_list(user_name):
         await ctx.message.channel.send(
-            "You are already confirmed for this {session_day}'s session. See you at {session_time}!"
+            f"You are already confirmed for this {session_day}'s session. See you at {session_time}!"
         )
     else:
         trackers['rsvp_accept_session_list'].append(user_name)
@@ -82,7 +83,7 @@ async def _decline(ctx):
         print("Decline list: ", trackers['rsvp_decline_session_list'])
     else:
         await ctx.message.channel.send(
-            "You are already declined for this {session_day}s session. See you next time!"
+            f"You are already declined for this {session_day}s session. See you next time!"
         )
 
 
@@ -164,16 +165,22 @@ async def every_friday():
     """
     channel = bot.fetch_channel(channel_id)
     await channel.send(
-        "Are we good for this {session_day}'s D&D session? Reply with #confirm or #decline"
+        f"Are we good for this {session_day}'s D&D session? Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`."
     )
 
+async def send_dm():
+    target = await bot.fetch_user(dm_id)
+    if target is None:
+        print("we didn't get a user")
+    else:
+        await target.send(f"Confirm List: {trackers['rsvp_accept_session_list']} \n Decline list: {trackers['rsvp_decline_session_list']}")
 
 async def every_sunday():
     """
     Run this task every {session_day}.
     """
     channel = bot.fetch_channel(channel_id)
-    await channel.send("Game tonight @ 7:30pm. Reply with #confirm or #decline.")
+    await channel.send(f"Game tonight @ 7:30pm. Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`.")
 
 
 async def session_decision():
@@ -183,16 +190,16 @@ async def session_decision():
     """
     channel = bot.fetch_channel(channel_id)
     if (
-        len(trackers['rsvp_accept_session_list']) < 4
+        len(trackers['rsvp_accept_session_list']) < 4 
         or len(trackers['rsvp_decline_session_list']) > 0
     ):
         await channel.send(
-            "Looks like we don't have all the Bardcore Ruffians available for tonight's session. \n\nWould the group like to have a dream session or cancel? Reply #dream or #cancel"
+            f"Looks like we don't have all the Bardcore Ruffians available for tonight's session. \n\nWould the group like to have a dream session or cancel? Please use either `{bot_prefix}dream` or `{bot_prefix}cancel`."
         )
 
 
 # Tasks
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
 async def daily_tasks():
     """
     Ensure our daily tasks get done.
@@ -202,11 +209,14 @@ async def daily_tasks():
     today = datetime.now().weekday()
     # string format time %H returns the 24 hour time in string format
     hour = int(datetime.now().strftime("%H"))
-    if today == 6 and hour == 19:
+    mins = int(datetime.now().strftime("%M"))
+    if today == 4 and hour == 12 and mins == 1:
         await every_friday()
-    elif today == 6 and hour == 12:
+    elif today == 5 and hour == 16 and mins == 1:
+        await send_dm()
+    elif today == 6 and hour == 12 and mins == 1:
         await every_sunday()
-    elif today == 6 and hour == 16:
+    elif today == 6 and hour == 16 and mins == 1:
         await session_decision()
 
 
@@ -214,3 +224,6 @@ daily_tasks.start()
 
 # Start the bot
 bot.run(token)
+
+
+
