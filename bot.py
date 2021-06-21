@@ -59,13 +59,13 @@ async def _accept(ctx):
             "You are already confirmed for this {session_day}'s session. See you at {session_time}!"
         )
     else:
-        trackers['rsvp_accept_session_list'].append(user_name)
+        trackers["rsvp_accept_session_list"].append(user_name)
         check_and_remove_from_rsvp_decline(ctx.message)
         await ctx.message.channel.send(
             f"Thank you for confirming, see you on {session_day}! Here is the list of current attendees: {trackers['rsvp_accept_session_list']}"
         )
-        print("Confirm list: ", trackers['rsvp_accept_session_list'])
-        print("Decline list: ", trackers['rsvp_decline_session_list'])
+        print("Confirm list: ", trackers["rsvp_accept_session_list"])
+        print("Decline list: ", trackers["rsvp_decline_session_list"])
 
 
 @rsvp.command(name="decline")
@@ -75,11 +75,11 @@ async def _decline(ctx):
     """
     user_name = ctx.message.author.name
     if not is_on_rsvp_decline_list(user_name):
-        trackers['rsvp_decline_session_list'].append(user_name)
+        trackers["rsvp_decline_session_list"].append(user_name)
         check_and_remove_from_rsvp_accept(ctx.message)
         await ctx.message.channel.send("No problem, see you next session!")
-        print("Confirm list: ", trackers['rsvp_accept_session_list'])
-        print("Decline list: ", trackers['rsvp_decline_session_list'])
+        print("Confirm list: ", trackers["rsvp_accept_session_list"])
+        print("Decline list: ", trackers["rsvp_decline_session_list"])
     else:
         await ctx.message.channel.send(
             "You are already declined for this {session_day}s session. See you next time!"
@@ -90,7 +90,9 @@ async def _decline(ctx):
 @bot.group()
 async def vote(ctx):
     if ctx.invoked_subcommand is None:
-        await ctx.message.channel.send(f"Please `{bot_prefix}vote dream` or `{bot_prefix}vote cancel`")
+        await ctx.message.channel.send(
+            f"Please `{bot_prefix}vote dream` or `{bot_prefix}vote cancel`"
+        )
 
 
 @vote.command(name="dream")
@@ -99,11 +101,11 @@ async def _dream(ctx):
     Vote for a dream session.
     """
     user_name = ctx.message.author.name
-    trackers['alt_vote_dream_session_list'].append(user_name)
+    trackers["alt_vote_dream_session_list"].append(user_name)
     await ctx.message.channel.send(
         f"Thank you for your input, you have been added to the dream list. Currently consisting of {trackers['alt_vote_dream_session_list']}"
     )
-    print("Dream list: ", trackers['alt_vote_dream_session_list'])
+    print("Dream list: ", trackers["alt_vote_dream_session_list"])
 
 
 @vote.command(name="cancel")
@@ -112,11 +114,11 @@ async def _cancel(ctx):
     Vote to cancel session.
     """
     user_name = ctx.message.author.name
-    trackers['alt_vote_cancel_session_list'].append(user_name)
+    trackers["alt_vote_cancel_session_list"].append(user_name)
     await ctx.message.channel.send(
         f"Thank you for your input, you have been added to the cancel list, currently consisting of {trackers['alt_vote_cancel_session_list']}"
     )
-    print("Cancel list: ", trackers['alt_vote_cancel_session_list'])
+    print("Cancel list: ", trackers["alt_vote_cancel_session_list"])
 
 
 # Helpers
@@ -125,7 +127,7 @@ def is_on_rsvp_accept_list(user_name):
     Check if user has signed up to attend
     the session.
     """
-    return user_name in trackers['rsvp_accept_session_list']
+    return user_name in trackers["rsvp_accept_session_list"]
 
 
 def is_on_rsvp_decline_list(user_name):
@@ -133,7 +135,7 @@ def is_on_rsvp_decline_list(user_name):
     Check if user has signed up to attend
     the session.
     """
-    return user_name in trackers['rsvp_decline_session_list']
+    return user_name in trackers["rsvp_decline_session_list"]
 
 
 def check_and_remove_from_rsvp_accept(message):
@@ -142,7 +144,7 @@ def check_and_remove_from_rsvp_accept(message):
     """
     user_name = message.author.name
     try:
-        trackers['rsvp_accept_session_list'].remove(user_name)
+        trackers["rsvp_accept_session_list"].remove(user_name)
     except ValueError:
         pass
 
@@ -153,7 +155,7 @@ def check_and_remove_from_rsvp_decline(message):
     """
     user_name = message.author.name
     try:
-        trackers['rsvp_decline_session_list'].remove(user_name)
+        trackers["rsvp_decline_session_list"].remove(user_name)
     except ValueError:
         pass
 
@@ -183,8 +185,8 @@ async def session_decision():
     """
     channel = bot.fetch_channel(channel_id)
     if (
-        len(trackers['rsvp_accept_session_list']) < 4
-        or len(trackers['rsvp_decline_session_list']) > 0
+        len(trackers["rsvp_accept_session_list"]) < 4
+        or len(trackers["rsvp_decline_session_list"]) > 0
     ):
         await channel.send(
             "Looks like we don't have all the Bardcore Ruffians available for tonight's session. \n\nWould the group like to have a dream session or cancel? Reply #dream or #cancel"
@@ -210,7 +212,7 @@ async def daily_tasks():
         await session_decision()
 
 
-daily_tasks.start()
-
-# Start the bot
-bot.run(token)
+if __name__ == "__main__":
+    # Start the bot
+    daily_tasks.start()
+    bot.run(token)
