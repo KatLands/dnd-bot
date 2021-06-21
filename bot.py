@@ -220,10 +220,7 @@ async def daily_tasks():
         await session_decision()
 
 
-daily_tasks.start()
-
-# Start the bot
-bot.run(token)
-
-
-
+if __name__ == "__main__":
+    # Start the bot
+    daily_tasks.start()
+    bot.run(token)
