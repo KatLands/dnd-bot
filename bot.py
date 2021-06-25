@@ -1,18 +1,30 @@
 import discord
-import configparser
 
 from datetime import datetime, date
 from discord.ext import commands, tasks
 
-# Load config
-config = configparser.ConfigParser()
-config.read("config.ini")
-token = config["secrets"]["token"]
-session_time = config["session"]["time"]
-session_day = config["session"]["day"]
-channel_id = int(config["discord"]["channelID"])
-bot_prefix = config["discord"]["botPrefix"]
-dm_id = config["discord"]["dmID"]
+try:
+    import configparser
+    # Load config
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+
+    token = config["secrets"]["token"]
+    session_time = config["session"]["time"]
+    session_day = config["session"]["day"]
+    channel_id = int(config["discord"]["channelID"])
+    bot_prefix = config["discord"]["botPrefix"]
+    dm_id = config["discord"]["dmID"]
+except:
+    # fall back to environment variables
+    from os import environ
+    
+    token = environ["token"]
+    session_time = environ["time"]
+    session_day = environ["day"]
+    channel_id = int(environ["channelID"])
+    bot_prefix = environ["botPrefix"]
+    dm_id = environ["dmID"]
 
 
 # Bot init
