@@ -175,7 +175,7 @@ async def every_friday():
     """
     Run this task every Friday.
     """
-    channel = bot.fetch_channel(channel_id)
+    channel = await bot.fetch_channel(channel_id)
     await channel.send(
         f"Are we good for this {session_day}'s D&D session? Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`."
     )
@@ -191,7 +191,7 @@ async def every_sunday():
     """
     Run this task every {session_day}.
     """
-    channel = bot.fetch_channel(channel_id)
+    channel = await bot.fetch_channel(channel_id)
     await channel.send(f"Game tonight @ 7:30pm. Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`.")
 
 
@@ -200,7 +200,7 @@ async def session_decision():
     Post a warning that we do not have enough players
     for a full session. Ask for alternative plans.
     """
-    channel = bot.fetch_channel(channel_id)
+    channel = await bot.fetch_channel(channel_id)
     if (
         len(trackers['rsvp_accept_session_list']) < 4 
         or len(trackers['rsvp_decline_session_list']) > 0
