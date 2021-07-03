@@ -206,7 +206,7 @@ async def session_decision():
         or len(trackers['rsvp_decline_session_list']) > 0
     ):
         await channel.send(
-            f"Looks like we don't have all the Bardcore Ruffians available for tonight's session. \n\nWould the group like to have a dream session or cancel? Please use either `{bot_prefix}dream` or `{bot_prefix}cancel`."
+            f"Looks like we don't have all the Bardcore Ruffians available for tonight's session. \n\nWould the group like to have a dream session or cancel? Please use either `{bot_prefix}vote dream` or `{bot_prefix}vote cancel`."
         )
 
 
