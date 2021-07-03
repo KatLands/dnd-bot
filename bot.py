@@ -222,13 +222,13 @@ async def daily_tasks():
     # string format time %H returns the 24 hour time in string format
     hour = int(datetime.now().strftime("%H"))
     mins = int(datetime.now().strftime("%M"))
-    if today == 4 and hour == 12 and mins == 1:
+    if today == 4 and hour == 16 and mins == 1:
         await every_friday()
-    elif today == 5 and hour == 16 and mins == 1:
+    elif today == 5 and hour == 20 and mins == 1:
         await send_dm()
-    elif today == 6 and hour == 12 and mins == 1:
-        await every_sunday()
     elif today == 6 and hour == 16 and mins == 1:
+        await every_sunday()
+    elif today == 6 and hour == 20 and mins == 1:
         await session_decision()
 
 
