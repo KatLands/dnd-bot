@@ -1,42 +1,72 @@
 # Trackers
 class Tracker:
-    def __init__(self):
-        self.rsvp_accept_session_list = []
-        self.rsvp_decline_session_list = []
-        self.alt_vote_dream_session_list = []
-        self.alt_vote_cancel_session_list = []
+    _ATTENDEES = "attendees"
+    _DECLINERS = "decliners"
+    _DREAMERS = "dreamers"
+    _CANCELLERS = "cancellers"
 
-    # Helpers
-    def is_on_rsvp_accept_list(self, user_name):
-        """
-        Check if user has signed up to attend
-        the session.
-        """
-        return user_name in self.rsvp_accept_session_list
+    def __init__(self, db):
+        self.db = db
 
-    def is_on_rsvp_decline_list(self, user_name):
-        """
-        Check if user has signed up to attend
-        the session.
-        """
-        return user_name in self.rsvp_decline_session_list
+    @property
+    def MEMBERS(self):
+        return self._MEMBERS
 
-    def check_and_remove_from_rsvp_accept(self, message):
-        """
-        Remove user from RSVP accept.
-        """
-        user_name = message.author.name
-        try:
-            self.rsvp_accept_session_list.remove(user_name)
-        except ValueError:
-            pass
+    @property
+    def ATTENDEES(self):
+        return self._ATTENDEES
 
-    def check_and_remove_from_rsvp_decline(self, message):
-        """
-        Remover user from RSVP decline.
-        """
-        user_name = message.author.name
-        try:
-            self.rsvp_decline_session_list.remove(user_name)
-        except ValueError:
-            pass
+    @property
+    def DECLINERS(self):
+        return self._DECLINERS
+
+    @property
+    def DREAMERS(self):
+        return self._DREAMERS
+
+    @property
+    def CANCELLERS(self):
+        return self._CANCELLERS
+
+    def get_all(self):
+        return (
+            self.get_attendees(),
+            self.get_decliners(),
+            self.get_dreamers(),
+            self.get_cancellers(),
+        )
+
+    def reset(self):
+        return self.db.delete(
+            self.ATTENDEES, self.DECLINERS, self.DREAMERS, self.CANCELLERS
+        )
+
+    def get_attendees(self):
+        return self.db.smembers(self.ATTENDEES)
+
+    def add_attendee(self, attendee):
+        return self.db.sadd(self.ATTENDEES, attendee)
+
+    def remove_attendee(self, attendee):
+        return self.db.srem(self.ATTENDEES, attendee)
+
+    def add_decliner(self, decliner):
+        return self.db.sadd(self.DECLINERS, decliner)
+
+    def get_decliners(self):
+        return self.db.smembers(self.DECLINERS)
+
+    def remove_decliner(self, decliner):
+        return self.db.srem(self.DECLINERS, decliner)
+
+    def get_dreamers(self):
+        return self.db.smembers(self.DREAMERS)
+
+    def add_dreamer(self, dreamer):
+        return self.db.sadd(self.DREAMERS, dreamer)
+
+    def get_cancellers(self):
+        return self.db.smembers(self.CANCELLERS)
+
+    def add_canceller(self, canceller):
+        return self.db.sadd(self.CANCELLERS, canceller)

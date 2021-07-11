@@ -1,3 +1,5 @@
+import redis
+
 from helpers import Tracker
 from tasks import BotTasks
 
@@ -16,6 +18,9 @@ try:
     channel_id = int(config["discord"]["channelID"])
     bot_prefix = config["discord"]["botPrefix"]
     dm_id = config["discord"]["dmID"]
+    db_host = config["db"]["host"]
+    db_port = config["db"]["port"]
+    db_password = config["db"]["password"]
 except KeyError:
     # fall back to environment variables
     from os import environ
@@ -26,6 +31,9 @@ except KeyError:
     channel_id = int(environ["channelID"])
     bot_prefix = environ["botPrefix"]
     dm_id = environ["dmID"]
+    db_host = environ["dbHost"]
+    db_port = environ["dbPort"]
+    db_password = environ["dbPassword"]
 
 
 # Bot init
@@ -33,7 +41,10 @@ description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description)
 
 # Trackers
-tracker = Tracker()
+db = redis.Redis(
+    host=db_host, port=db_port, password=db_password, decode_responses=True
+)
+tracker = Tracker(db)
 
 
 # Events
@@ -46,6 +57,20 @@ async def on_ready():
 @bot.command()
 async def ping(ctx):
     await ctx.message.channel.send("I'm alive!")
+
+
+@bot.command()
+async def reset(ctx):
+    tracker.reset()
+    await ctx.message.channel.send("Tracking reset!")
+
+
+@bot.command()
+async def list(ctx):
+    accept, decline, dream, cancel = tracker.get_all()
+    await ctx.message.channel.send(
+        f"Accepted: {', '.join(accept)}\nDecline: {', '.join(decline)}\nDreamers: {', '.join(dream)}\nCancelled: {', '.join(cancel)}"
+    )
 
 
 # Support rsvp [accept|decline]
@@ -63,18 +88,15 @@ async def _accept(ctx):
     RSVP accept. Update attendees if needed.
     """
     user_name = ctx.message.author.name
-    if tracker.is_on_rsvp_accept_list(user_name):
+    if tracker.add_attendee(user_name):
+        await ctx.message.channel.send(
+            f"Thank you for confirming, see you on {session_day}! Current attendees: {', '.join(tracker.get_attendees())}"
+        )
+    else:
         await ctx.message.channel.send(
             f"You are already confirmed for this {session_day}'s session. See you at {session_time}!"
         )
-    else:
-        tracker.rsvp_accept_session_list.append(user_name)
-        tracker.check_and_remove_from_rsvp_decline(ctx.message)
-        await ctx.message.channel.send(
-            f"Thank you for confirming, see you on {session_day}! Here is the list of current attendees: {tracker.rsvp_accept_session_list}"
-        )
-        print("Confirm list: ", tracker.rsvp_accept_session_list)
-        print("Decline list: ", tracker.rsvp_decline_session_list)
+    tracker.remove_decliner(user_name)
 
 
 @rsvp.command(name="decline")
@@ -83,16 +105,13 @@ async def _decline(ctx):
     RSVP decline. Update attendees if needed.
     """
     user_name = ctx.message.author.name
-    if not tracker.is_on_rsvp_decline_list(user_name):
-        tracker.rsvp_decline_session_list.append(user_name)
-        tracker.check_and_remove_from_rsvp_accept(ctx.message)
+    if tracker.add_decliner(user_name):
         await ctx.message.channel.send("No problem, see you next session!")
-        print("Confirm list: ", tracker.rsvp_accept_session_list)
-        print("Decline list: ", tracker.rsvp_decline_session_list)
     else:
         await ctx.message.channel.send(
             f"You are already declined for this {session_day}s session. See you next time!"
         )
+    tracker.remove_attendee(user_name)
 
 
 # Support vote [dream|cancel]
@@ -110,11 +129,12 @@ async def _dream(ctx):
     Vote for a dream session.
     """
     user_name = ctx.message.author.name
-    tracker.alt_vote_dream_session_list.append(user_name)
-    await ctx.message.channel.send(
-        f"Thank you for your input, you have been added to the dream list. Currently consisting of {tracker.alt_vote_dream_session_list}"
-    )
-    print("Dream list: ", tracker.alt_vote_dream_session_list)
+    if tracker.add_dreamer(user_name):
+        await ctx.message.channel.send(
+            f"You have been added to the list of dreamers: {', '.join(tracker.get_dreamers())}"
+        )
+    else:
+        await ctx.message.channel.send("You're already a dreamer!")
 
 
 @vote.command(name="cancel")
@@ -123,11 +143,12 @@ async def _cancel(ctx):
     Vote to cancel session.
     """
     user_name = ctx.message.author.name
-    tracker.alt_vote_cancel_session_list.append(user_name)
-    await ctx.message.channel.send(
-        f"Thank you for your input, you have been added to the cancel list, currently consisting of {tracker.alt_vote_cancel_session_list}"
-    )
-    print("Cancel list: ", tracker.alt_vote_cancel_session_list)
+    if tracker.add_canceller(user_name):
+        await ctx.message.channel.send(
+            f"You have been added to the cancellation list: {', '.join(tracker.get_cancellers())}"
+        )
+    else:
+        await ctx.message.channel.send("You've already voted to cancel.")
 
 
 # Tasks
@@ -153,6 +174,8 @@ async def daily_tasks():
         await bt.every_sunday(channel_id)
     elif today == 6 and hour == 20 and mins == 1:
         await bt.session_decision(channel_id, tracker)
+    elif today == 0 and hour == 1 and mins == 1:
+        await reset()
 
 
 if __name__ == "__main__":
