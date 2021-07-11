@@ -31,4 +31,9 @@ botPrefix =
 # User ID (not name) of your Dungeon Master.
 # Used for sending them a summary of the upcomming session.
 dmID =
+
+[db]
+host =
+port =
+password =
 ```
