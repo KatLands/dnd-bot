@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+
+echo "[pre-commit] Running hooks..."
+echo "[black] Check formatting..."
+black --check .
+echo "[flake8] Check PEP8..."
+flake8
