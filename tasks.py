@@ -17,7 +17,7 @@ class BotTasks:
             print("we didn't get a user")
         else:
             await target.send(
-                f"Confirm List: {tracker.rsvp_accept_session_list} \n Decline list: {tracker.rsvp_decline_session_list}"
+                f"Confirm List: {', '.join(tracker.get_attendees())}\nDecline list: {', '.join(tracker.get_decliners())}"
             )
 
     async def every_sunday(self, channel_id):
@@ -35,10 +35,12 @@ class BotTasks:
         for a full session. Ask for alternative plans.
         """
         channel = await self.bot.fetch_channel(channel_id)
-        if (
-            len(tracker.rsvp_accept_session_list) < 4
-            or len(tracker.rsvp_decline_session_list) > 0
-        ):
+        if len(tracker.get_attendees()) < 4 or len(tracker.get_decliners()) > 0:
             await channel.send(
                 f"Looks like we don't have all the Bardcore Ruffians available for tonight's session. \n\nWould the group like to have a dream session or cancel? Please use either `{self.bot.command_prefix}vote dream` or `{self.bot.command_prefix}vote cancel`."
             )
+
+    async def reset_lists(self, channel_id, tracker):
+        channel = await self.bot.fetch_channel(channel_id)
+        tracker.reset()
+        channel.send("Weekly reset complete!")
