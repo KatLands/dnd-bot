@@ -175,7 +175,7 @@ async def daily_tasks():
     elif today == 6 and hour == 20 and mins == 1:
         await bt.session_decision(channel_id, tracker)
     elif today == 0 and hour == 1 and mins == 1:
-        await reset()
+        await bt.reset_lists(channel_id, tracker)
 
 
 if __name__ == "__main__":
