@@ -25,9 +25,7 @@ class Tracker:
         )
 
     def reset(self) -> bool:
-        return self.db.delete(
-            *[key.value for key in Key]
-        )
+        return self.db.delete(*[key.value for key in Key])
 
     def skip(self) -> bool:
         return self.db.set(Key.SKIP, "true")
