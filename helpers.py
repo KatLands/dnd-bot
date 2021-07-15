@@ -1,34 +1,20 @@
+from enum import Enum
+from typing import Tuple, Set
+
+
+class Key(str, Enum):
+    ATTENDEES = "dnd-bot:attendees"
+    DECLINERS = "dnd-bot:decliners"
+    DREAMERS = "dnd-bot:dreamers"
+    CANCELLERS = "dnd-bot:cancellers"
+
+
 # Trackers
 class Tracker:
-    _ATTENDEES = "attendees"
-    _DECLINERS = "decliners"
-    _DREAMERS = "dreamers"
-    _CANCELLERS = "cancellers"
-
     def __init__(self, db):
         self.db = db
 
-    @property
-    def MEMBERS(self):
-        return self._MEMBERS
-
-    @property
-    def ATTENDEES(self):
-        return self._ATTENDEES
-
-    @property
-    def DECLINERS(self):
-        return self._DECLINERS
-
-    @property
-    def DREAMERS(self):
-        return self._DREAMERS
-
-    @property
-    def CANCELLERS(self):
-        return self._CANCELLERS
-
-    def get_all(self):
+    def get_all(self) -> Tuple[Set, Set, Set, Set]:
         return (
             self.get_attendees(),
             self.get_decliners(),
@@ -36,37 +22,37 @@ class Tracker:
             self.get_cancellers(),
         )
 
-    def reset(self):
+    def reset(self) -> bool:
         return self.db.delete(
-            self.ATTENDEES, self.DECLINERS, self.DREAMERS, self.CANCELLERS
+            Key.ATTENDEES, Key.DECLINERS, Key.DREAMERS, Key.CANCELLERS
         )
 
-    def get_attendees(self):
-        return self.db.smembers(self.ATTENDEES)
+    def get_attendees(self) -> Set:
+        return self.db.smembers(Key.ATTENDEES)
 
-    def add_attendee(self, attendee):
-        return self.db.sadd(self.ATTENDEES, attendee)
+    def add_attendee(self, attendee: str) -> bool:
+        return self.db.sadd(Key.ATTENDEES, attendee)
 
-    def remove_attendee(self, attendee):
-        return self.db.srem(self.ATTENDEES, attendee)
+    def remove_attendee(self, attendee: str) -> bool:
+        return self.db.srem(Key.ATTENDEES, attendee)
 
-    def add_decliner(self, decliner):
-        return self.db.sadd(self.DECLINERS, decliner)
+    def add_decliner(self, decliner: str) -> bool:
+        return self.db.sadd(Key.DECLINERS, decliner)
 
-    def get_decliners(self):
-        return self.db.smembers(self.DECLINERS)
+    def get_decliners(self) -> Set:
+        return self.db.smembers(Key.DECLINERS)
 
-    def remove_decliner(self, decliner):
-        return self.db.srem(self.DECLINERS, decliner)
+    def remove_decliner(self, decliner: str) -> bool:
+        return self.db.srem(Key.DECLINERS, decliner)
 
-    def get_dreamers(self):
-        return self.db.smembers(self.DREAMERS)
+    def get_dreamers(self) -> Set:
+        return self.db.smembers(Key.DREAMERS)
 
-    def add_dreamer(self, dreamer):
-        return self.db.sadd(self.DREAMERS, dreamer)
+    def add_dreamer(self, dreamer: str) -> bool:
+        return self.db.sadd(Key.DREAMERS, dreamer)
 
-    def get_cancellers(self):
-        return self.db.smembers(self.CANCELLERS)
+    def get_cancellers(self) -> Set:
+        return self.db.smembers(Key.CANCELLERS)
 
-    def add_canceller(self, canceller):
-        return self.db.sadd(self.CANCELLERS, canceller)
+    def add_canceller(self, canceller: str) -> bool:
+        return self.db.sadd(Key.CANCELLERS, canceller)
