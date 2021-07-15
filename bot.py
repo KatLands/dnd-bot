@@ -60,16 +60,30 @@ async def ping(ctx):
 
 
 @bot.command()
+async def commands(ctx):
+
+    await ctx.message.channel.send(
+        f"**Available commands**: {', '.join([command.name for command in bot.commands])}"
+    )
+
+
+@bot.command()
 async def reset(ctx):
     tracker.reset()
     await ctx.message.channel.send("Tracking reset!")
 
 
 @bot.command()
+async def skip(ctx):
+    tracker.skip()
+    await ctx.message.channel.send("Skipping this week!")
+
+
+@bot.command()
 async def list(ctx):
-    accept, decline, dream, cancel = tracker.get_all()
+    accept, decline, dream, cancel, is_skip = tracker.get_all()
     await ctx.message.channel.send(
-        f"Accepted: {', '.join(accept)}\nDecline: {', '.join(decline)}\nDreamers: {', '.join(dream)}\nCancelled: {', '.join(cancel)}"
+        f"**Accepted**: {', '.join(accept)}\n**Decline**: {', '.join(decline)}\n**Dreamers**: {', '.join(dream)}\n**Cancelled**: {', '.join(cancel)}\n**Skip?**: {is_skip}"
     )
 
 
@@ -166,7 +180,11 @@ async def daily_tasks():
     # string format time %H returns the 24 hour time in string format
     hour = int(datetime.now().strftime("%H"))
     mins = int(datetime.now().strftime("%M"))
-    if today == 4 and hour == 16 and mins == 1:
+    if today == 0 and hour == 1 and mins == 1:
+        await bt.reset_lists(channel_id, tracker)
+    elif tracker.isSkip():
+        return
+    elif today == 4 and hour == 16 and mins == 1:
         await bt.every_friday(channel_id, session_day)
     elif today == 5 and hour == 20 and mins == 1:
         await bt.send_dm(dm_id, tracker)
@@ -174,8 +192,6 @@ async def daily_tasks():
         await bt.every_sunday(channel_id)
     elif today == 6 and hour == 20 and mins == 1:
         await bt.session_decision(channel_id, tracker)
-    elif today == 0 and hour == 1 and mins == 1:
-        await bt.reset_lists(channel_id, tracker)
 
 
 if __name__ == "__main__":

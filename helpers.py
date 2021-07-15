@@ -7,6 +7,7 @@ class Key(str, Enum):
     DECLINERS = "dnd-bot:decliners"
     DREAMERS = "dnd-bot:dreamers"
     CANCELLERS = "dnd-bot:cancellers"
+    SKIP = "dnd-bot:skip"
 
 
 # Trackers
@@ -20,12 +21,17 @@ class Tracker:
             self.get_decliners(),
             self.get_dreamers(),
             self.get_cancellers(),
+            self.isSkip(),
         )
 
     def reset(self) -> bool:
-        return self.db.delete(
-            Key.ATTENDEES, Key.DECLINERS, Key.DREAMERS, Key.CANCELLERS
-        )
+        return self.db.delete(*[key.value for key in Key])
+
+    def skip(self) -> bool:
+        return self.db.set(Key.SKIP, "true")
+
+    def isSkip(self) -> bool:
+        return bool(self.db.get(Key.SKIP))
 
     def get_attendees(self) -> Set:
         return self.db.smembers(Key.ATTENDEES)
