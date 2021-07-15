@@ -4,6 +4,7 @@ from helpers import Tracker
 from tasks import BotTasks
 
 from datetime import datetime
+from discord import Embed
 from discord.ext import commands, tasks
 
 try:
@@ -61,10 +62,10 @@ async def ping(ctx):
 
 @bot.command()
 async def commands(ctx):
-
-    await ctx.message.channel.send(
-        f"**Available commands**: {', '.join([command.name for command in bot.commands])}"
-    )
+    embed = Embed(title="Available Commands")
+    for cmd in bot.commands:
+        embed.add_field(name=cmd.name, value=f"`{cmd.name}`")
+    await ctx.message.channel.send(embed=embed)
 
 
 @bot.command()
@@ -82,9 +83,13 @@ async def skip(ctx):
 @bot.command()
 async def list(ctx):
     accept, decline, dream, cancel, is_skip = tracker.get_all()
-    await ctx.message.channel.send(
-        f"**Accepted**: {', '.join(accept)}\n**Decline**: {', '.join(decline)}\n**Dreamers**: {', '.join(dream)}\n**Cancelled**: {', '.join(cancel)}\n**Skip?**: {is_skip}"
-    )
+    embed = Embed(title="Lists")
+    embed.add_field(name="Accepted", value=accept)
+    embed.add_field(name="Declined", value=decline)
+    embed.add_field(name="Dreamers", value=dream)
+    embed.add_field(name="Cancelled", value=cancel)
+    embed.add_field(name="Skipping?", value=is_skip)
+    await ctx.message.channel.send(embed=embed)
 
 
 # Support rsvp [accept|decline]
@@ -103,9 +108,12 @@ async def _accept(ctx):
     """
     user_name = ctx.message.author.name
     if tracker.add_attendee(user_name):
-        await ctx.message.channel.send(
-            f"Thank you for confirming, see you on {session_day}! Current attendees: {', '.join(tracker.get_attendees())}"
+        embed = Embed()
+        embed.add_field(
+            name="Accepted", value=f"Thanks for confirming. See you {session_day}!"
         )
+        embed.add_field(name="Attendees", value=tracker.get_attendees())
+        await ctx.message.channel.send(embed=embed)
     else:
         await ctx.message.channel.send(
             f"You are already confirmed for this {session_day}'s session. See you at {session_time}!"
@@ -120,7 +128,10 @@ async def _decline(ctx):
     """
     user_name = ctx.message.author.name
     if tracker.add_decliner(user_name):
-        await ctx.message.channel.send("No problem, see you next session!")
+        embed = Embed()
+        embed.add_field(name="Declined", value="No problem, see you next time!")
+        embed.add_field(name="Those that have declined", value=tracker.get_decliners())
+        await ctx.message.channel.send(embed=embed)
     else:
         await ctx.message.channel.send(
             f"You are already declined for this {session_day}s session. See you next time!"
@@ -144,9 +155,12 @@ async def _dream(ctx):
     """
     user_name = ctx.message.author.name
     if tracker.add_dreamer(user_name):
-        await ctx.message.channel.send(
-            f"You have been added to the list of dreamers: {', '.join(tracker.get_dreamers())}"
+        embed = Embed()
+        embed.add_field(
+            name="Dreaming", value="You've been added to the dreaming list!"
         )
+        embed.add_field(name="Other dreamers", value=tracker.get_dreamers())
+        await ctx.message.channel.send(embed=embed)
     else:
         await ctx.message.channel.send("You're already a dreamer!")
 
@@ -158,9 +172,12 @@ async def _cancel(ctx):
     """
     user_name = ctx.message.author.name
     if tracker.add_canceller(user_name):
-        await ctx.message.channel.send(
-            f"You have been added to the cancellation list: {', '.join(tracker.get_cancellers())}"
+        embed = Embed()
+        embed.add_field(name="Cancelling", value="You've voted to cancel this week.")
+        embed.add_field(
+            name="Others that have cancelled", value=tracker.get_cancellers()
         )
+        await ctx.message.channel.send(embed=embed)
     else:
         await ctx.message.channel.send("You've already voted to cancel.")
 
