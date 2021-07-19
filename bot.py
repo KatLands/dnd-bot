@@ -2,8 +2,10 @@ import redis
 
 from helpers import Tracker
 from tasks import BotTasks
+from typing import List
 
 from datetime import datetime
+from discord import Embed
 from discord.ext import commands, tasks
 
 try:
@@ -61,9 +63,15 @@ async def ping(ctx):
 
 @bot.command()
 async def commands(ctx):
-
     await ctx.message.channel.send(
-        f"**Available commands**: {', '.join([command.name for command in bot.commands])}"
+        embed=Embed().from_dict(
+            {
+                "title": "Available Commands",
+                "fields": [
+                    {"name": cmd.name, "value": f"`{cmd.name}`"} for cmd in bot.commands
+                ],
+            }
+        )
     )
 
 
@@ -83,7 +91,18 @@ async def skip(ctx):
 async def list(ctx):
     accept, decline, dream, cancel, is_skip = tracker.get_all()
     await ctx.message.channel.send(
-        f"**Accepted**: {', '.join(accept)}\n**Decline**: {', '.join(decline)}\n**Dreamers**: {', '.join(dream)}\n**Cancelled**: {', '.join(cancel)}\n**Skip?**: {is_skip}"
+        embed=Embed().from_dict(
+            {
+                "title": "Lists",
+                "fields": [
+                    {"name": "Accepted", "value": plist(accept)},
+                    {"name": "Declined", "value": plist(decline)},
+                    {"name": "Dreamers", "value": plist(dream)},
+                    {"name": "Cancelled", "value": plist(cancel)},
+                    {"name": "Skipping?", "value": str(is_skip)},
+                ],
+            }
+        )
     )
 
 
@@ -104,7 +123,17 @@ async def _accept(ctx):
     user_name = ctx.message.author.name
     if tracker.add_attendee(user_name):
         await ctx.message.channel.send(
-            f"Thank you for confirming, see you on {session_day}! Current attendees: {', '.join(tracker.get_attendees())}"
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": "Accepted",
+                            "value": f"Thanks for confirming. See you {session_day}!",
+                        },
+                        {"name": "Attendees", "value": plist(tracker.get_attendees())},
+                    ]
+                }
+            )
         )
     else:
         await ctx.message.channel.send(
@@ -120,7 +149,19 @@ async def _decline(ctx):
     """
     user_name = ctx.message.author.name
     if tracker.add_decliner(user_name):
-        await ctx.message.channel.send("No problem, see you next session!")
+        await ctx.message.channel.send(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {"name": "Declined", "value": "No problem, see you next time!"},
+                        {
+                            "name": "Those that have declined",
+                            "value": plist(tracker.get_decliners()),
+                        },
+                    ]
+                }
+            )
+        )
     else:
         await ctx.message.channel.send(
             f"You are already declined for this {session_day}s session. See you next time!"
@@ -145,7 +186,20 @@ async def _dream(ctx):
     user_name = ctx.message.author.name
     if tracker.add_dreamer(user_name):
         await ctx.message.channel.send(
-            f"You have been added to the list of dreamers: {', '.join(tracker.get_dreamers())}"
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": "Dreaming",
+                            "value": "You've been added to the dreaming list!",
+                        },
+                        {
+                            "name": "Other dreamers",
+                            "value": plist(tracker.get_dreamers()),
+                        },
+                    ]
+                }
+            )
         )
     else:
         await ctx.message.channel.send("You're already a dreamer!")
@@ -159,10 +213,29 @@ async def _cancel(ctx):
     user_name = ctx.message.author.name
     if tracker.add_canceller(user_name):
         await ctx.message.channel.send(
-            f"You have been added to the cancellation list: {', '.join(tracker.get_cancellers())}"
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": "Cancelling",
+                            "value": "You've voted to cancel this week.",
+                        },
+                        {
+                            "name": "Others that have cancelled",
+                            "value": plist(tracker.get_cancellers()),
+                        },
+                    ]
+                }
+            )
         )
     else:
         await ctx.message.channel.send("You've already voted to cancel.")
+
+
+def plist(inlist: List) -> str:
+    if len(inlist) > 0:
+        return ", ".join(inlist)
+    return "None"
 
 
 # Tasks
