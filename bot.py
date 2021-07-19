@@ -4,6 +4,8 @@ from helpers import Tracker
 from tasks import BotTasks
 from typing import List
 
+from os import execv
+from sys import argv, executable
 from datetime import datetime
 from discord import Embed
 from discord.ext import commands, tasks
@@ -236,6 +238,15 @@ def plist(inlist: List) -> str:
     if len(inlist) > 0:
         return ", ".join(inlist)
     return "None"
+
+
+@bot.command()
+async def restart(ctx):
+    """
+    Restart the bot.
+    """
+    await ctx.message.add_reaction("👍")
+    execv(executable, ["python3"] + argv)
 
 
 # Tasks
