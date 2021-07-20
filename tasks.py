@@ -50,4 +50,4 @@ class BotTasks:
     async def reset_lists(self, channel_id: int, tracker: "helpers.Tracker") -> None:
         channel: Any = await self.bot.fetch_channel(channel_id)
         tracker.reset()
-        channel.send("Weekly reset complete!")
+        await channel.send("Weekly reset complete!")
