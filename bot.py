@@ -268,13 +268,13 @@ async def daily_tasks():
         await bt.reset_lists(channel_id, tracker)
     elif tracker.isSkip():
         return
-    elif today == 4 and hour == 16 and mins == 1:
+    elif today == 4 and hour == 12 and mins == 1:
         await bt.every_friday(channel_id, session_day)
-    elif today == 5 and hour == 20 and mins == 1:
+    elif today == 5 and hour == 16 and mins == 1:
         await bt.send_dm(dm_id, tracker)
-    elif today == 6 and hour == 16 and mins == 1:
+    elif today == 6 and hour == 12 and mins == 1:
         await bt.every_sunday(channel_id)
-    elif today == 6 and hour == 20 and mins == 1:
+    elif today == 6 and hour == 16 and mins == 1:
         await bt.session_decision(channel_id, tracker)
 
 
