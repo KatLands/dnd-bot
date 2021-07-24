@@ -43,6 +43,7 @@ except KeyError:
 # Bot init
 description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description)
+startTime = datetime.now().replace(microsecond=0)
 
 # Trackers
 db = redis.Redis(
@@ -54,7 +55,7 @@ tracker = Tracker(db)
 # Events
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user.name} - {bot.user.id}")
+    print(f"[{startTime}] - Logged in as {bot.user.name} - {bot.user.id}")
 
 
 # Commands
@@ -247,6 +248,15 @@ async def restart(ctx):
     """
     await ctx.message.add_reaction("👍")
     execv(executable, ["python3"] + argv)
+
+
+@bot.command()
+async def uptime(ctx):
+    """
+    Print uptime duration.
+    """
+    now = datetime.now().replace(microsecond=0)
+    await ctx.message.channel.send(f"Up for {now - startTime}")
 
 
 # Tasks
