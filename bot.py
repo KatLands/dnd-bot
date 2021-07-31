@@ -283,7 +283,7 @@ async def daily_tasks():
     elif today == 5 and hour == 16 and mins == 1:
         await bt.send_dm(dm_id, tracker)
     elif today == 6 and hour == 12 and mins == 1:
-        await bt.every_sunday(channel_id)
+        await bt.every_sunday(channel_id, tracker)
     elif today == 6 and hour == 16 and mins == 1:
         await bt.session_decision(channel_id, tracker)
 

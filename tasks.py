@@ -27,23 +27,21 @@ class BotTasks:
             )
 
 
-    async def check_rsvp_full(ctx):
-        members = len([i for i in ctx.guild.members if not i.bot])
+    async def check_rsvp_full(tracker, guild) -> bool:
+        member_count = len([member for member in guild.members if not member.bot])
 
-        if members == len(Tracker.get_attendees()):
+        if member_count == len(tracker.get_attendees()):
             return True
         else:
             return False
 
 
-    async def every_sunday(self, channel_id: int) -> None:
+    async def every_sunday(self, channel_id: int, tracker) -> None:
         """
         Run this task every {session_day}.
         """
-        if self.check_rsvp_full():
-            pass
-        else:
-            channel: Any = await self.bot.fetch_channel(channel_id)
+        channel: Any = await self.bot.fetch_channel(channel_id)
+        if not self.check_rsvp_full(tracker, channel.guild):
             await channel.send(
                 f"Game tonight @ 7:30pm. Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
             )
