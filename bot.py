@@ -7,7 +7,7 @@ from typing import List
 from os import execv
 from sys import argv, executable
 from datetime import datetime
-from discord import Embed
+from discord import Embed, Intents
 from discord.ext import commands, tasks
 
 try:
@@ -41,9 +41,12 @@ except KeyError:
 
 
 # Bot init
+intents = Intents.default()
+intents.members = True
 description = """A bot to assist with hearding players for D&D sessions."""
-bot = commands.Bot(command_prefix=bot_prefix, description=description)
+bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now().replace(microsecond=0)
+
 
 # Trackers
 db = redis.Redis(

@@ -26,9 +26,11 @@ class BotTasks:
                 f"Confirm List: {', '.join(tracker.get_attendees())}\nDecline list: {', '.join(tracker.get_decliners())}"
             )
 
-
+    @staticmethod
     async def check_rsvp_full(tracker, guild) -> bool:
         member_count = len([member for member in guild.members if not member.bot])
+        print(guild.members)
+        print(len(tracker.get_attendees()))
 
         if member_count == len(tracker.get_attendees()):
             return True
@@ -41,7 +43,11 @@ class BotTasks:
         Run this task every {session_day}.
         """
         channel: Any = await self.bot.fetch_channel(channel_id)
-        if not self.check_rsvp_full(tracker, channel.guild):
+        if await self.check_rsvp_full(tracker, channel.guild):
+            await channel.send(
+                "We have a full group for tonight's game. See you at 7:30pm!"
+            )
+        else:
             await channel.send(
                 f"Game tonight @ 7:30pm. Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
             )
