@@ -1,6 +1,7 @@
 import helpers
-
+from helpers import Tracker
 from typing import Any
+from discord import Role
 
 
 class BotTasks:
@@ -25,14 +26,27 @@ class BotTasks:
                 f"Confirm List: {', '.join(tracker.get_attendees())}\nDecline list: {', '.join(tracker.get_decliners())}"
             )
 
+
+    async def check_rsvp_full(ctx):
+        members = len([i for i in ctx.guild.members if not i.bot])
+
+        if members == len(Tracker.get_attendees()):
+            return True
+        else:
+            return False
+
+
     async def every_sunday(self, channel_id: int) -> None:
         """
         Run this task every {session_day}.
         """
-        channel: Any = await self.bot.fetch_channel(channel_id)
-        await channel.send(
-            f"Game tonight @ 7:30pm. Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
-        )
+        if self.check_rsvp_full():
+            pass
+        else:
+            channel: Any = await self.bot.fetch_channel(channel_id)
+            await channel.send(
+                f"Game tonight @ 7:30pm. Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            )
 
     async def session_decision(
         self, channel_id: int, tracker: "helpers.Tracker"
