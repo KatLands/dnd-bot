@@ -1,7 +1,5 @@
 import helpers
-from helpers import Tracker
 from typing import Any
-from discord import Role
 
 
 class BotTasks:
@@ -36,7 +34,6 @@ class BotTasks:
             return True
         else:
             return False
-
 
     async def every_sunday(self, channel_id: int, tracker) -> None:
         """
