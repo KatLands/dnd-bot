@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+    bot:
+        build: .
+        container_name: dnd-bot
+        links:
+            - redis
+        depends_on:
+            - redis
+    redis:
+        image: redis
+        volumes:
+            - redis_data:/data
+
+volumes:
+    redis_data:
+        external: false
