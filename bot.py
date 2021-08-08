@@ -114,14 +114,37 @@ async def list(ctx):
 
 @bot.command()
 async def add(ctx):
-    await ctx.message.channel.send("Enter items to add to personal inventory")
+    await ctx.message.channel.send(
+        embed = Embed.from_dict(
+            {
+                "fields": [
+                    {
+                        "name": "Enter items to add to personal inventory:",
+                        "value": "\u200b"
+                    }
+                ]
+            }
+        )
+    )
     add_to = await bot.wait_for('message', timeout = 60 )
     if add_to:
         tracker.add_inv(add_to.content)
 
+
 @bot.command()
 async def remove(ctx):
-    await ctx.message.channel.send("Enter items to remove from personal inventory")
+    await ctx.message.channel.send(
+        embed = Embed().from_dict(
+            {
+                "fields": [
+                    {
+                        "name": "Enter items to remove from personal inventory:",
+                        "value": "\u200b"
+                    }
+                ]
+            }
+        )
+    )
     remove_from = await bot.wait_for("message", timeout = 60)
     if remove_from:
         tracker.remove_inv(remove_from.content)
@@ -129,8 +152,19 @@ async def remove(ctx):
 
 @bot.command()
 async def inv(ctx):
-    await ctx.message.channel.send(tracker.get_inv())
-    
+    await ctx.message.channel.send(
+        embed = Embed().from_dict(
+            {
+                "fields": [
+                    {
+                        "name": "Inventory",
+                        "value": plist(tracker.get_inv())
+                    }
+                ]    
+            }
+        )
+    )
+
 
 # Support rsvp [accept|decline]
 @bot.group()
