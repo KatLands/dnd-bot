@@ -8,6 +8,7 @@ class Key(str, Enum):
     DREAMERS = "dnd-bot:dreamers"
     CANCELLERS = "dnd-bot:cancellers"
     SKIP = "dnd-bot:skip"
+    INV = "dnd-bot:inv"
 
 
 # Trackers
@@ -62,3 +63,12 @@ class Tracker:
 
     def add_canceller(self, canceller: str) -> bool:
         return self.db.sadd(Key.CANCELLERS, canceller)
+    
+    def add_inv(self, inv: str):
+        return self.db.sadd(Key.INV, inv)
+
+    def remove_inv(self, inv: str):
+        return self.db.srem(Key.INV, inv)
+    
+    def get_inv(self):
+        return self.db.smembers(Key.INV)

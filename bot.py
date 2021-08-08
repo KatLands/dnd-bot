@@ -112,6 +112,26 @@ async def list(ctx):
     )
 
 
+@bot.command()
+async def add(ctx):
+    await ctx.message.channel.send("Enter items to add to personal inventory")
+    add_to = await bot.wait_for('message', timeout = 60 )
+    if add_to:
+        tracker.add_inv(add_to.content)
+
+@bot.command()
+async def remove(ctx):
+    await ctx.message.channel.send("Enter items to remove from personal inventory")
+    remove_from = await bot.wait_for("message", timeout = 60)
+    if remove_from:
+        tracker.remove_inv(remove_from.content)
+
+
+@bot.command()
+async def inv(ctx):
+    await ctx.message.channel.send(tracker.get_inv())
+    
+
 # Support rsvp [accept|decline]
 @bot.group()
 async def rsvp(ctx):
