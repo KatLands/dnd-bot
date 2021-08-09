@@ -141,7 +141,7 @@ async def remove(ctx):
                 "fields": [
                     {
                         "name": "Enter items to remove from personal inventory:",
-                        "value": "\u200b"
+                        "value": "\u200b",
                     }
                 ]
             }
