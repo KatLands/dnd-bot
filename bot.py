@@ -116,7 +116,7 @@ async def list(ctx):
 async def add(ctx):
     author = ctx.message.author.id
     await ctx.message.channel.send(
-        embed = Embed.from_dict(
+        embed=Embed.from_dict(
             {
                 "fields": [
                     {
