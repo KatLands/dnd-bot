@@ -72,11 +72,10 @@ class Tracker:
         player_inv = self.inv_builder(author)
         return self.db.srem(player_inv, inv)
     
-    def get_inv(self, user: str):
+    def get_inv(self, user: str) -> Set:
         return self.db.smembers(self.inv_builder(user))
 
     def inv_builder(self, author):
         return f"{Key.INV}:{author}"
 
     
-
