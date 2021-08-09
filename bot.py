@@ -121,7 +121,7 @@ async def add(ctx):
                 "fields": [
                     {
                         "name": "Enter items to add to personal inventory:",
-                        "value": "\u200b"
+                        "value": "\u200b",
                     }
                 ]
             }
