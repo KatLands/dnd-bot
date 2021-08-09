@@ -127,7 +127,7 @@ async def add(ctx):
             }
         )
     )
-    add_to = await bot.wait_for('message', timeout = 60 )
+    add_to = await bot.wait_for("message", timeout=60 )
     if add_to:
         tracker.add_inv(author, add_to.content)
 
