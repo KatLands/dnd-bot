@@ -65,14 +65,15 @@ class Tracker:
         return self.db.sadd(Key.CANCELLERS, canceller)
     
     def add_inv(self, author: int, inv: str):
-        player_inv = Tracker.inv_builder(author)
+        player_inv = self.inv_builder(author)
         return self.db.sadd(player_inv, inv)
 
-    #def remove_inv(self, inv: str):
-        #return self.db.srem(Key.INV, inv)
+    def remove_inv(self, author, inv: str):
+        player_inv = self.inv_builder(author)
+        return self.db.srem(player_inv, inv)
     
-    #def get_inv(self):
-        #return self.db.smembers(Key.INV)
+    def get_inv(self, user: str):
+        return self.db.smembers(self.inv_builder(user))
 
     def inv_builder(self, author):
         return f"{Key.INV}:{author}"
