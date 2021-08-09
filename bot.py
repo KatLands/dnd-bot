@@ -114,6 +114,7 @@ async def list(ctx):
 
 @bot.command()
 async def add(ctx):
+    author = ctx.message.author.id
     await ctx.message.channel.send(
         embed = Embed.from_dict(
             {
@@ -128,7 +129,7 @@ async def add(ctx):
     )
     add_to = await bot.wait_for('message', timeout = 60 )
     if add_to:
-        tracker.add_inv(add_to.content)
+        tracker.add_inv(author, add_to.content)
 
 
 @bot.command()
@@ -152,6 +153,8 @@ async def remove(ctx):
 
 @bot.command()
 async def inv(ctx):
+    author = ctx.message.author.id
+    await ctx.message.channel.send(f"Current user is {author}")
     await ctx.message.channel.send(
         embed = Embed().from_dict(
             {
