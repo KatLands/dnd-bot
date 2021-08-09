@@ -75,7 +75,7 @@ class Tracker:
     def get_inv(self, user: str) -> Set:
         return self.db.smembers(self.inv_builder(user))
 
-    def inv_builder(self, author):
+    def inv_builder(self, author) -> str:
         return f"{Key.INV}:{author}"
 
     
