@@ -64,7 +64,7 @@ class Tracker:
     def add_canceller(self, canceller: str) -> bool:
         return self.db.sadd(Key.CANCELLERS, canceller)
     
-    def add_inv(self, author: int, inv: str):
+    def add_inv(self, author: int, inv: str) -> bool:
         player_inv = self.inv_builder(author)
         return self.db.sadd(player_inv, inv)
 
@@ -79,5 +79,4 @@ class Tracker:
         return f"{Key.INV}:{author}"
 
     
-
 
