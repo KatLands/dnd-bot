@@ -155,13 +155,15 @@ async def remove(ctx):
 @bot.command()
 async def inv(ctx):
     author = ctx.message.author.id
-    await ctx.message.channel.send(f"Current user is {author}")
+    name = ctx.message.author.name
+    # For testing
+    # await ctx.message.channel.send(f"Current user is {author}")
     await ctx.message.channel.send(
         embed = Embed().from_dict(
             {
                 "fields": [
                     {
-                        "name": "Inventory",
+                        "name": f"__*{name}'s Inventory:*__",
                         "value": plist(tracker.get_inv(author))
                     }
                 ]    
