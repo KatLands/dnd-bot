@@ -127,7 +127,7 @@ async def add(ctx):
             }
         )
     )
-    add_to = await bot.wait_for("message", timeout=60 )
+    add_to = await bot.wait_for("message", timeout=60)
     if add_to:
         tracker.add_inv(author, add_to.content)
 
@@ -147,7 +147,7 @@ async def remove(ctx):
             }
         )
     )
-    remove_from = await bot.wait_for("message", timeout = 60)
+    remove_from = await bot.wait_for("message", timeout=60)
     if remove_from:
         tracker.remove_inv(author, remove_from.content)
 
@@ -156,13 +156,14 @@ async def remove(ctx):
 async def inv(ctx):
     author = ctx.message.author.id
     name = ctx.message.author.name
+    one_line = "\n".join(tracker.get_inv(author))
     await ctx.message.channel.send(
         embed = Embed().from_dict(
             {
                 "fields": [
                     {
                         "name": f"__*{name}'s Inventory:*__",
-                        "value": plist(tracker.get_inv(author))
+                        "value": one_line,
                     }
                 ]    
             }
