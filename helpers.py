@@ -3,12 +3,12 @@ from typing import Tuple, Set
 
 
 class Key(str, Enum):
-    ATTENDEES = "dnd-bot:attendees"
-    DECLINERS = "dnd-bot:decliners"
-    DREAMERS = "dnd-bot:dreamers"
-    CANCELLERS = "dnd-bot:cancellers"
-    SKIP = "dnd-bot:skip"
-    INV = "dnd-bot:inv"
+    ATTENDEES = "dnd-bot:unlocked:attendees"
+    DECLINERS = "dnd-bot:unlocked:decliners"
+    DREAMERS = "dnd-bot:unlocked:dreamers"
+    CANCELLERS = "dnd-bot:unlocked:cancellers"
+    SKIP = "dnd-bot:unlocked:skip"
+    INV = "dnd-bot:locked:inv"
 
 
 # Trackers
@@ -26,7 +26,7 @@ class Tracker:
         )
 
     def reset(self) -> bool:
-        return self.db.delete(*[key.value for key in Key])
+        return self.db.delete(*[key.value for key in Key if "dnd-bot:unlocked" in key.value])
 
     def skip(self) -> bool:
         return self.db.set(Key.SKIP, "true")
