@@ -156,8 +156,7 @@ async def remove(ctx):
 async def inv(ctx):
     author = ctx.message.author.id
     name = ctx.message.author.name
-    set_list = [item for item in tracker.get_inv(author)]
-    one_line = "\n".join(set_list)
+    one_line = "\n".join(tracker.get_inv(author))
     await ctx.message.channel.send(
         embed = Embed().from_dict(
             {
