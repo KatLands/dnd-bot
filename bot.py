@@ -83,19 +83,19 @@ async def commands(ctx):
 
 @bot.command()
 async def reset(ctx):
-    tracker.reset()
+    tracker.reset(ctx.message.guild.id)
     await ctx.message.channel.send("Tracking reset!")
 
 
 @bot.command()
 async def skip(ctx):
-    tracker.skip()
+    tracker.skip(ctx.message.guild.id)
     await ctx.message.channel.send("Skipping this week!")
 
 
 @bot.command()
 async def list(ctx):
-    accept, decline, dream, cancel, is_skip = tracker.get_all()
+    accept, decline, dream, cancel, is_skip = tracker.get_all(ctx.message.guild.id)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
             {
@@ -129,7 +129,7 @@ async def add(ctx):
     )
     add_to = await bot.wait_for("message", timeout=60)
     if add_to:
-        tracker.add_inv(author, add_to.content)
+        tracker.add_inv(ctx.message.guild, author, add_to.content)
 
 
 @bot.command()
@@ -149,23 +149,23 @@ async def remove(ctx):
     )
     remove_from = await bot.wait_for("message", timeout=60)
     if remove_from:
-        tracker.remove_inv(author, remove_from.content)
+        tracker.remove_inv(ctx.message.guild.id, author, remove_from.content)
 
 
 @bot.command()
 async def inv(ctx):
     author = ctx.message.author.id
     name = ctx.message.author.name
-    one_line = "\n".join(tracker.get_inv(author))
+    one_line = "\n".join(tracker.get_inv(ctx.message.guild.id, author))
     await ctx.message.channel.send(
-        embed = Embed().from_dict(
+        embed=Embed().from_dict(
             {
                 "fields": [
                     {
                         "name": f"__*{name}'s Inventory:*__",
                         "value": one_line,
                     }
-                ]    
+                ]
             }
         )
     )
@@ -186,7 +186,7 @@ async def _accept(ctx):
     RSVP accept. Update attendees if needed.
     """
     user_name = ctx.message.author.name
-    if tracker.add_attendee(user_name):
+    if tracker.add_attendee(ctx.message.guild.id, user_name):
         await ctx.message.channel.send(
             embed=Embed().from_dict(
                 {
@@ -195,7 +195,10 @@ async def _accept(ctx):
                             "name": "Accepted",
                             "value": f"Thanks for confirming. See you {session_day}!",
                         },
-                        {"name": "Attendees", "value": plist(tracker.get_attendees())},
+                        {
+                            "name": "Attendees",
+                            "value": plist(tracker.get_attendees(ctx.message.guild.id)),
+                        },
                     ]
                 }
             )
@@ -204,7 +207,7 @@ async def _accept(ctx):
         await ctx.message.channel.send(
             f"You are already confirmed for this {session_day}'s session. See you at {session_time}!"
         )
-    tracker.remove_decliner(user_name)
+    tracker.remove_decliner(ctx.message.guild.id, user_name)
 
 
 @rsvp.command(name="decline")
@@ -213,7 +216,7 @@ async def _decline(ctx):
     RSVP decline. Update attendees if needed.
     """
     user_name = ctx.message.author.name
-    if tracker.add_decliner(user_name):
+    if tracker.add_decliner(ctx.message.guild.id, user_name):
         await ctx.message.channel.send(
             embed=Embed().from_dict(
                 {
@@ -221,7 +224,7 @@ async def _decline(ctx):
                         {"name": "Declined", "value": "No problem, see you next time!"},
                         {
                             "name": "Those that have declined",
-                            "value": plist(tracker.get_decliners()),
+                            "value": plist(tracker.get_decliners(ctx.message.guild.id)),
                         },
                     ]
                 }
@@ -231,7 +234,7 @@ async def _decline(ctx):
         await ctx.message.channel.send(
             f"You are already declined for this {session_day}s session. See you next time!"
         )
-    tracker.remove_attendee(user_name)
+    tracker.remove_attendee(ctx.message.guild.id, user_name)
 
 
 # Support vote [dream|cancel]
@@ -249,7 +252,7 @@ async def _dream(ctx):
     Vote for a dream session.
     """
     user_name = ctx.message.author.name
-    if tracker.add_dreamer(user_name):
+    if tracker.add_dreamer(ctx.message.guild.id, user_name):
         await ctx.message.channel.send(
             embed=Embed().from_dict(
                 {
@@ -260,7 +263,7 @@ async def _dream(ctx):
                         },
                         {
                             "name": "Other dreamers",
-                            "value": plist(tracker.get_dreamers()),
+                            "value": plist(tracker.get_dreamers(ctx.message.guild.id)),
                         },
                     ]
                 }
@@ -276,7 +279,7 @@ async def _cancel(ctx):
     Vote to cancel session.
     """
     user_name = ctx.message.author.name
-    if tracker.add_canceller(user_name):
+    if tracker.add_canceller(ctx.message.guild.id, user_name):
         await ctx.message.channel.send(
             embed=Embed().from_dict(
                 {
@@ -287,7 +290,9 @@ async def _cancel(ctx):
                         },
                         {
                             "name": "Others that have cancelled",
-                            "value": plist(tracker.get_cancellers()),
+                            "value": plist(
+                                tracker.get_cancellers(ctx.message.guild.id)
+                            ),
                         },
                     ]
                 }
