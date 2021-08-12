@@ -11,6 +11,7 @@ All commands must be prefixed (e.g. `!ping`).
 - `rsvp [accept|decline]`: `accept` or `decline` the invitation to the session.
 - `vote [dream|cancel]`: Cast your vote for either `dreaming` or `cancelling`
   the session when you do not have a full group of players.
+- `inv [add|remove]`: Add, remove, or display personal player inventoy with either `add`, `remove`, or `inv` by itself.
 
 
 ## Config
