@@ -9,6 +9,7 @@ from sys import argv, executable
 from datetime import datetime
 from discord import Embed, Intents
 from discord.ext import commands, tasks
+from asyncio import TimeoutError
 
 try:
     import configparser
@@ -116,16 +117,16 @@ async def list(ctx):
 @bot.group()
 async def inv(ctx):
     if ctx.invoked_subcommand is None:
-        author = ctx.message.author.id
-        name = ctx.message.author.name
-        one_line = "\n".join(tracker.get_inv(author))
+        one_per_line = "\n".join(tracker.get_inv(ctx.message.author.id))
+        if len(one_per_line) == 0:
+            one_per_line = "<< Empty >>"
         await ctx.message.channel.send(
             embed = Embed().from_dict(
                 {
                     "fields": [
                         {
-                            "name": f"__*{name}'s Inventory:*__",
-                            "value": one_line,
+                            "name": f"__*{ctx.message.author.name}'s Inventory:*__",
+                            "value": one_per_line,
                         }
                     ]    
                 }
@@ -135,7 +136,6 @@ async def inv(ctx):
 
 @inv.command(name="add")
 async def add(ctx):
-    author = ctx.message.author.id
     await ctx.message.channel.send(
         embed=Embed.from_dict(
             {
@@ -151,18 +151,20 @@ async def add(ctx):
     while True:
         try:
             add_message = await bot.wait_for("message", timeout=60)   
-            if ctx.message.channel.id == add_message.channel.id and author == add_message.author.id:
-                tracker.add_inv(author, add_message.content)
-                await add_message.add_reaction("✅")
-                break
-        except:
-            await ctx.message.channel.send(f"Inventory add request timed out. Please use {bot_prefix}inv add again.")
+        except TimeoutError:
+            await ctx.message.channel.send(
+                f"Inventory add request timed out. Please use `{bot_prefix}inv` add again."
+                )
+            break
+
+        if ctx.message.channel.id == add_message.channel.id and ctx.message.author.id == add_message.author.id:
+            tracker.add_inv(ctx.message.author.id, add_message.content)
+            await add_message.add_reaction("✅")
             break
         
         
 @inv.command(name="remove")
 async def remove(ctx):
-    author = ctx.message.author.id
     await ctx.message.channel.send(
         embed=Embed().from_dict(
             {
@@ -178,14 +180,15 @@ async def remove(ctx):
     while True:
         try:
             remove_message = await bot.wait_for("message", timeout=60)
-            if ctx.message.channel.id == remove_message.channel.id and author == remove_message.author.id:
-                tracker.remove_inv(author, remove_message.content)
-                await remove_message.add_reaction("❎")
-                break
-        except:
-            await ctx.message.channel.send(f"Inventory remove request timed out. Please use {bot_prefix}inv remove again.")
+        except TimeoutError:
+            await ctx.message.channel.send(f"Inventory remove request timed out. Please use `{bot_prefix}inv` remove again.")
             break
 
+        if ctx.message.channel.id == remove_message.channel.id and ctx.message.author.id == remove_message.author.id:
+            tracker.remove_inv(ctx.message.author.id, remove_message.content)
+            await remove_message.add_reaction("❎")
+            break
+        
 
 # Support rsvp [accept|decline]
 @bot.group()
