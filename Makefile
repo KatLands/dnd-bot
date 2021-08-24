@@ -6,3 +6,6 @@ stop:
 
 logs:
 	sudo docker-compose logs
+
+redis:
+	sudo docker exec -it dnd-bot_redis_1 redis-cli
