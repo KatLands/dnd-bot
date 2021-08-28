@@ -26,7 +26,9 @@ class Tracker:
         )
 
     def reset(self) -> bool:
-        return self.db.delete(*[key.value for key in Key if "dnd-bot:unlocked" in key.value])
+        return self.db.delete(
+            *[key.value for key in Key if "dnd-bot:unlocked" in key.value]
+        )
 
     def skip(self) -> bool:
         return self.db.set(Key.SKIP, "true")
@@ -63,7 +65,7 @@ class Tracker:
 
     def add_canceller(self, canceller: str) -> bool:
         return self.db.sadd(Key.CANCELLERS, canceller)
-    
+
     def add_inv(self, author: int, inv: str) -> bool:
         player_inv = self.inv_builder(author)
         return self.db.sadd(player_inv, inv)
@@ -71,11 +73,9 @@ class Tracker:
     def remove_inv(self, author, inv: str) -> bool:
         player_inv = self.inv_builder(author)
         return self.db.srem(player_inv, inv)
-    
+
     def get_inv(self, user: str) -> Set:
         return self.db.smembers(self.inv_builder(user))
 
     def inv_builder(self, author) -> str:
         return f"{Key.INV}:{author}"
-
-    

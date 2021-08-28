@@ -1,15 +1,11 @@
-import redis
-
-from helpers import Tracker
+from pymongo import MongoClient
+from mongo_tracker import Tracker
 from tasks import BotTasks
 from typing import List
 
-from os import execv
-from sys import argv, executable
 from datetime import datetime
 from discord import Embed, Intents
-from discord.ext import commands, tasks
-from asyncio import TimeoutError
+from discord.ext import commands
 
 try:
     import configparser
@@ -24,7 +20,7 @@ try:
     bot_prefix = config["discord"]["botPrefix"]
     dm_id = config["discord"]["dmID"]
     db_host = config["db"]["host"]
-    db_port = config["db"]["port"]
+    db_port = int(config["db"]["port"])
     db_password = config["db"]["password"]
 except KeyError:
     # fall back to environment variables
@@ -50,10 +46,9 @@ startTime = datetime.now().replace(microsecond=0)
 
 
 # Trackers
-db = redis.Redis(
-    host=db_host, port=db_port, password=db_password, decode_responses=True
+tracker = Tracker(
+    MongoClient(host=db_host, port=db_port, password=db_password)["dnd-bot"]
 )
-tracker = Tracker(db)
 
 
 # Events
@@ -84,19 +79,21 @@ async def commands(ctx):
 
 @bot.command()
 async def reset(ctx):
-    tracker.reset()
-    await ctx.message.channel.send("Tracking reset!")
+    if tracker.reset(ctx.guild.id):
+        await ctx.message.channel.send("Tracking reset!")
+    else:
+        await ctx.message.channel.send("Reset failed!")
 
 
 @bot.command()
 async def skip(ctx):
-    tracker.skip()
+    tracker.skip(ctx.guild.id)
     await ctx.message.channel.send("Skipping this week!")
 
 
 @bot.command()
 async def list(ctx):
-    accept, decline, dream, cancel, is_skip = tracker.get_all()
+    accept, decline, dream, cancel = tracker.get_all(ctx.guild.id)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
             {
@@ -106,7 +103,6 @@ async def list(ctx):
                     {"name": "Declined", "value": plist(decline)},
                     {"name": "Dreamers", "value": plist(dream)},
                     {"name": "Cancelled", "value": plist(cancel)},
-                    {"name": "Skipping?", "value": str(is_skip)},
                 ],
             }
         )
@@ -117,18 +113,20 @@ async def list(ctx):
 @bot.group()
 async def inv(ctx):
     if ctx.invoked_subcommand is None:
-        one_per_line = "\n".join(tracker.get_inv(ctx.message.author.id))
+        one_per_line = "\n".join(
+            tracker.get_inventory_for_player(ctx.guild.id, ctx.message.author)
+        )
         if len(one_per_line) == 0:
             one_per_line = "<< Empty >>"
         await ctx.message.channel.send(
-            embed = Embed().from_dict(
+            embed=Embed().from_dict(
                 {
                     "fields": [
                         {
                             "name": f"__*{ctx.message.author.name}'s Inventory:*__",
                             "value": one_per_line,
                         }
-                    ]    
+                    ]
                 }
             )
         )
@@ -136,59 +134,30 @@ async def inv(ctx):
 
 @inv.command(name="add")
 async def add(ctx):
-    await ctx.message.channel.send(
-        embed=Embed.from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Enter items to add to personal inventory:",
-                        "value": "\u200b",
-                    }
-                ]
-            }
-        )
-    )
-    while True:
-        try:
-            add_message = await bot.wait_for("message", timeout=60)   
-        except TimeoutError:
-            await ctx.message.channel.send(
-                f"Inventory add request timed out. Please use `{bot_prefix}inv` add again."
-                )
-            break
+    _, _, items = ctx.message.content.split(" ", 2)
+    unpacked_items = items.split(", ")
+    for pair in unpacked_items:
+        qty, item = pair.split(":")
+        tracker.add_to_player_inventory(ctx.guild.id, ctx.author, item, qty)
+    await ctx.message.add_reaction("✅")
 
-        if ctx.message.channel.id == add_message.channel.id and ctx.message.author.id == add_message.author.id:
-            tracker.add_inv(ctx.message.author.id, add_message.content)
-            await add_message.add_reaction("✅")
-            break
-        
-        
+
 @inv.command(name="remove")
 async def remove(ctx):
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Enter items to remove from personal inventory:",
-                        "value": "\u200b",
-                    }
-                ]
-            }
-        )
-    )
-    while True:
-        try:
-            remove_message = await bot.wait_for("message", timeout=60)
-        except TimeoutError:
-            await ctx.message.channel.send(f"Inventory remove request timed out. Please use `{bot_prefix}inv` remove again.")
-            break
+    _, _, item = ctx.message.content.split(" ", 2)
+    tracker.rm_from_player_inventory(ctx.guild.id, ctx.author, item)
+    await ctx.message.add_reaction("✅")
 
-        if ctx.message.channel.id == remove_message.channel.id and ctx.message.author.id == remove_message.author.id:
-            tracker.remove_inv(ctx.message.author.id, remove_message.content)
-            await remove_message.add_reaction("❎")
-            break
-        
+
+@inv.command(name="update")
+async def update(ctx):
+    _, _, items = ctx.message.content.split(" ", 2)
+    unpacked_items = items.split(", ")
+    for pair in unpacked_items:
+        qty, item = pair.split(":")
+        tracker.rm_from_player_inventory(ctx.guild.id, ctx.author, item, qty)
+    await ctx.message.add_reaction("✅")
+
 
 # Support rsvp [accept|decline]
 @bot.group()
@@ -198,32 +167,30 @@ async def rsvp(ctx):
             f"Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`."
         )
 
- 
+
 @rsvp.command(name="accept")
 async def _accept(ctx):
     """
     RSVP accept. Update attendees if needed.
     """
-    user_name = ctx.message.author.name
-    if tracker.add_attendee(user_name):
-        await ctx.message.channel.send(
-            embed=Embed().from_dict(
-                {
-                    "fields": [
-                        {
-                            "name": "Accepted",
-                            "value": f"Thanks for confirming. See you {session_day}!",
-                        },
-                        {"name": "Attendees", "value": plist(tracker.get_attendees())},
-                    ]
-                }
-            )
+    tracker.add_attendee_for_guild(ctx.guild.id, ctx.author)
+    await ctx.message.channel.send(
+        embed=Embed().from_dict(
+            {
+                "fields": [
+                    {
+                        "name": "Accepted",
+                        "value": f"Thanks for confirming. See you {session_day}!",
+                    },
+                    {
+                        "name": "Attendees",
+                        "value": plist(tracker.get_attendees_for_guild(ctx.guild.id)),
+                    },
+                ]
+            }
         )
-    else:
-        await ctx.message.channel.send(
-            f"You are already confirmed for this {session_day}'s session. See you at {session_time}!"
-        )
-    tracker.remove_decliner(user_name)
+    )
+    tracker.rm_decliner_for_guild(ctx.guild.id, ctx.author)
 
 
 @rsvp.command(name="decline")
@@ -231,26 +198,21 @@ async def _decline(ctx):
     """
     RSVP decline. Update attendees if needed.
     """
-    user_name = ctx.message.author.name
-    if tracker.add_decliner(user_name):
-        await ctx.message.channel.send(
-            embed=Embed().from_dict(
-                {
-                    "fields": [
-                        {"name": "Declined", "value": "No problem, see you next time!"},
-                        {
-                            "name": "Those that have declined",
-                            "value": plist(tracker.get_decliners()),
-                        },
-                    ]
-                }
-            )
+    tracker.add_decliner_for_guild(ctx.guild.id, ctx.author)
+    await ctx.message.channel.send(
+        embed=Embed().from_dict(
+            {
+                "fields": [
+                    {"name": "Declined", "value": "No problem, see you next time!"},
+                    {
+                        "name": "Those that have declined",
+                        "value": plist(tracker.get_decliners_for_guild(ctx.guild.id)),
+                    },
+                ]
+            }
         )
-    else:
-        await ctx.message.channel.send(
-            f"You are already declined for this {session_day}s session. See you next time!"
-        )
-    tracker.remove_attendee(user_name)
+    )
+    tracker.rm_attendee_for_guild(ctx.guild.id, ctx.author)
 
 
 # Support vote [dream|cancel]
@@ -267,26 +229,23 @@ async def _dream(ctx):
     """
     Vote for a dream session.
     """
-    user_name = ctx.message.author.name
-    if tracker.add_dreamer(user_name):
-        await ctx.message.channel.send(
-            embed=Embed().from_dict(
-                {
-                    "fields": [
-                        {
-                            "name": "Dreaming",
-                            "value": "You've been added to the dreaming list!",
-                        },
-                        {
-                            "name": "Other dreamers",
-                            "value": plist(tracker.get_dreamers()),
-                        },
-                    ]
-                }
-            )
+    tracker.add_dreamer_for_guild(ctx.guild.id, ctx.author)
+    await ctx.message.channel.send(
+        embed=Embed().from_dict(
+            {
+                "fields": [
+                    {
+                        "name": "Dreaming",
+                        "value": "You've been added to the dreaming list!",
+                    },
+                    {
+                        "name": "Other dreamers",
+                        "value": plist(tracker.get_dreamers_for_guild(ctx.guild.id)),
+                    },
+                ]
+            }
         )
-    else:
-        await ctx.message.channel.send("You're already a dreamer!")
+    )
 
 
 @vote.command(name="cancel")
@@ -294,41 +253,31 @@ async def _cancel(ctx):
     """
     Vote to cancel session.
     """
-    user_name = ctx.message.author.name
-    if tracker.add_canceller(user_name):
-        await ctx.message.channel.send(
-            embed=Embed().from_dict(
-                {
-                    "fields": [
-                        {
-                            "name": "Cancelling",
-                            "value": "You've voted to cancel this week.",
-                        },
-                        {
-                            "name": "Others that have cancelled",
-                            "value": plist(tracker.get_cancellers()),
-                        },
-                    ]
-                }
-            )
+    tracker.add_canceller_for_guild(ctx.guild.id, ctx.author)
+    await ctx.message.channel.send(
+        embed=Embed().from_dict(
+            {
+                "fields": [
+                    {
+                        "name": "Cancelling",
+                        "value": "You've voted to cancel this week.",
+                    },
+                    {
+                        "name": "Others that have cancelled",
+                        "value": plist(tracker.get_cancellers_for_guild(ctx.guild.id)),
+                    },
+                ]
+            }
         )
-    else:
-        await ctx.message.channel.send("You've already voted to cancel.")
+    )
 
 
 def plist(inlist: List) -> str:
-    if len(inlist) > 0:
-        return ", ".join(inlist)
-    return "None"
-
-
-@bot.command()
-async def restart(ctx):
-    """
-    Restart the bot.
-    """
-    await ctx.message.add_reaction("👍")
-    execv(executable, ["python3"] + argv)
+    try:
+        if len(inlist) > 0:
+            return ", ".join(inlist)
+    except TypeError:
+        return "None"
 
 
 @bot.command()
@@ -344,32 +293,20 @@ async def uptime(ctx):
 bt = BotTasks(bot)
 
 
-@tasks.loop(minutes=1)
-async def daily_tasks():
-    """
-    Ensure our daily tasks get done.
-    """
-    await bot.wait_until_ready()
-    # weekday returns day of week from 0-6 where monday is 0
-    today = datetime.now().weekday()
-    # string format time %H returns the 24 hour time in string format
-    hour = int(datetime.now().strftime("%H"))
-    mins = int(datetime.now().strftime("%M"))
-    if today == 0 and hour == 1 and mins == 1:
-        await bt.reset_lists(channel_id, tracker)
-    elif tracker.isSkip():
-        return
-    elif today == 4 and hour == 12 and mins == 1:
-        await bt.every_friday(channel_id, session_day)
-    elif today == 5 and hour == 16 and mins == 1:
-        await bt.send_dm(dm_id, tracker)
-    elif today == 6 and hour == 12 and mins == 1:
-        await bt.every_sunday(channel_id, tracker)
-    elif today == 6 and hour == 16 and mins == 1:
-        await bt.session_decision(channel_id, tracker)
+# @tasks.loop(hours=1)
+# async def daily_tasks():
+#     """
+#     Ensure our daily tasks get done.
+#     """
+#     await bot.wait_until_ready()
+#     # weekday returns day of week from 0-6 where monday is 0
+#     today = datetime.now().weekday()
+#     # string format time %H returns the 24 hour time in string format
+#     hour = int(datetime.now().strftime("%H"))
+#     mins = int(datetime.now().strftime("%M"))
 
 
 if __name__ == "__main__":
     # Start the bot
-    daily_tasks.start()
+    # daily_tasks.start()
     bot.run(token)

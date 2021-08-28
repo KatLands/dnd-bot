@@ -11,7 +11,13 @@ services:
         image: redis
         volumes:
             - redis_data:/data
+    mongo:
+        image: mongo
+        volumes:
+            - mongo_data:/data/db
 
 volumes:
     redis_data:
+        external: false
+    mongo_data:
         external: false
