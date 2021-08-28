@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 from mongo_tracker import Tracker
-from tasks import BotTasks
 from typing import List
 
 from datetime import datetime
@@ -79,10 +78,8 @@ async def commands(ctx):
 
 @bot.command()
 async def reset(ctx):
-    if tracker.reset(ctx.guild.id):
-        await ctx.message.channel.send("Tracking reset!")
-    else:
-        await ctx.message.channel.send("Reset failed!")
+    tracker.reset(ctx.guild.id)
+    await ctx.message.add_reaction("✅")
 
 
 @bot.command()
@@ -273,10 +270,9 @@ async def _cancel(ctx):
 
 
 def plist(inlist: List) -> str:
-    try:
-        if len(inlist) > 0:
-            return ", ".join(inlist)
-    except TypeError:
+    if len(inlist) > 0:
+        return ", ".join([u["name"] for u in inlist])
+    else:
         return "None"
 
 
@@ -289,24 +285,6 @@ async def uptime(ctx):
     await ctx.message.channel.send(f"Up for {now - startTime}")
 
 
-# Tasks
-bt = BotTasks(bot)
-
-
-# @tasks.loop(hours=1)
-# async def daily_tasks():
-#     """
-#     Ensure our daily tasks get done.
-#     """
-#     await bot.wait_until_ready()
-#     # weekday returns day of week from 0-6 where monday is 0
-#     today = datetime.now().weekday()
-#     # string format time %H returns the 24 hour time in string format
-#     hour = int(datetime.now().strftime("%H"))
-#     mins = int(datetime.now().strftime("%M"))
-
-
 if __name__ == "__main__":
     # Start the bot
-    # daily_tasks.start()
     bot.run(token)

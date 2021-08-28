@@ -1,9 +1,4 @@
-import pprint
-import datetime
-
 from enum import Enum, unique
-from random import randrange
-from pymongo import MongoClient
 
 
 @unique
@@ -38,13 +33,12 @@ class Tracker:
         self.config = db[Collections.CONFIG]
         self.players = db[Collections.PLAYERS]
 
-    # Getters
     def get_all(self, guild_id):
         attendees = self.get_attendees_for_guild(guild_id)
         decliners = self.get_decliners_for_guild(guild_id)
-        cancellers = self.get_cancellers_for_guild(guild_id)
         dreamers = self.get_dreamers_for_guild(guild_id)
-        return (attendees, decliners, cancellers, dreamers)
+        cancellers = self.get_cancellers_for_guild(guild_id)
+        return (attendees, decliners, dreamers, cancellers)
 
     def get_attendees_for_guild(self, guild_id):
         try:
@@ -52,7 +46,7 @@ class Tracker:
                 {"guild": guild_id}, {Collections.ATTENDEES: 1, "_id": 0}
             )[Collections.ATTENDEES]
         except TypeError:
-            return None
+            return []
 
     def get_decliners_for_guild(self, guild_id):
         try:
@@ -60,7 +54,7 @@ class Tracker:
                 {"guild": guild_id}, {Collections.DECLINERS: 1, "_id": 0}
             )[Collections.DECLINERS]
         except TypeError:
-            return None
+            return []
 
     def get_cancellers_for_guild(self, guild_id):
         try:
@@ -68,7 +62,7 @@ class Tracker:
                 {"guild": guild_id}, {Collections.CANCELLERS: 1, "_id": 0}
             )[Collections.CANCELLERS]
         except TypeError:
-            return None
+            return []
 
     def get_dreamers_for_guild(self, guild_id):
         try:
@@ -76,7 +70,7 @@ class Tracker:
                 {"guild": guild_id}, {Collections.DREAMERS: 1, "_id": 0}
             )[Collections.DREAMERS]
         except TypeError:
-            return None
+            return []
 
     def get_inventories_for_guild(self, guild_id):
         return self.inventories.find({"guild": guild_id})
@@ -109,7 +103,6 @@ class Tracker:
     def _get_user(user):
         return {"name": user.name, "id": user.id}
 
-    # Add/Remove
     def reset(self, guild_id):
         query = {"guild": guild_id}
         self.attendees.delete_one(query)
@@ -238,115 +231,3 @@ class Tracker:
         return self.config.find(
             {"config.second-alert": day_of_the_week, "config.alerts": True}
         )
-
-
-if "__main__" in __name__:
-    pp = pprint.PrettyPrinter(indent=4)
-    gid = 1234567890
-    jane = {"name": "jane", "id": 2233}
-    tracker = Tracker(MongoClient("localhost", 27017)["dnd-bot"])
-
-    # Add/remove players
-    print(f"Players: {tracker.get_players_for_guild(gid)}")
-    tracker.add_player_for_guild(gid, jane)
-    print("After adding Jane:")
-    pp.pprint(tracker.get_players_for_guild(gid))
-    tracker.add_player_for_guild(gid, jane)
-    print("After trying to duplicate add Jane:")
-    pp.pprint(tracker.get_players_for_guild(gid))
-    tracker.rm_player_for_guild(gid, jane)
-    print("After removing Jane:")
-    pp.pprint(tracker.get_players_for_guild(gid))
-
-    # Add/remove attendees
-    print("Attendees:")
-    pp.pprint(tracker.get_attendees_for_guild(gid))
-    tracker.add_attendee_for_guild(gid, jane)
-    print("After adding Jane:")
-    pp.pprint(tracker.get_attendees_for_guild(gid))
-    tracker.rm_attendee_for_guild(gid, jane)
-    print("After removing Jane:")
-    pp.pprint(tracker.get_attendees_for_guild(gid))
-
-    # Add/remove decliners
-    decl = tracker.get_decliners_for_guild(gid)
-    print(f"Decliners: {decl}")
-    tracker.add_decliner_for_guild(gid, jane)
-    print("After adding Jane:")
-    pp.pprint(tracker.get_decliners_for_guild(gid))
-    tracker.rm_decliner_for_guild(gid, jane)
-    print("After removing Jane:")
-    pp.pprint(tracker.get_decliners_for_guild(gid))
-
-    # Add/remove dreamers
-    dre = tracker.get_dreamers_for_guild(gid)
-    print(f"Dreamers: {dre}")
-    tracker.add_dreamer_for_guild(gid, jane)
-    print("After adding Jane:")
-    pp.pprint(tracker.get_dreamers_for_guild(gid))
-    tracker.rm_dreamer_for_guild(gid, jane)
-    print("After removing Jane:")
-    pp.pprint(tracker.get_dreamers_for_guild(gid))
-
-    # Add/remove cancellers
-    canx = tracker.get_cancellers_for_guild(gid)
-    print(f"Cancellers: {canx}")
-    tracker.add_canceller_for_guild(gid, jane)
-    print("After adding Jane:")
-    pp.pprint(tracker.get_cancellers_for_guild(gid))
-    tracker.rm_canceller_for_guild(gid, jane)
-    print("After removing Jane:")
-    pp.pprint(tracker.get_cancellers_for_guild(gid))
-
-    # Guild configuration
-    gconf = tracker.get_config_for_guild(gid)
-    print("Guild config:")
-    pp.pprint(gconf)
-
-    # Inventories
-    # Get all
-    print("Guild inventories:")
-    for inv in tracker.get_inventories_for_guild(gid):
-        pp.pprint(inv)
-
-    # Get specific player inv
-    kali = {"name": "kali", "id": 123455}
-    print("Kali's inventory:")
-    pp.pprint(tracker.get_inventory_for_player(gid, kali))
-
-    # Update existing item quantity
-    random_copper_qty = randrange(1, 100)
-    print(f"Update copper amount to {random_copper_qty} in Kali's inv:")
-    tracker.update_player_inventory(gid, kali, "copper", random_copper_qty)
-    pp.pprint(tracker.get_inventory_for_player(gid, kali))
-
-    # Add new item
-    print("Add a book to Kali's inv:")
-    tracker.add_to_player_inventory(gid, kali, "book", 1)
-    pp.pprint(tracker.get_inventory_for_player(gid, kali))
-
-    # Remove item entry
-    print("Remove the book from Kali's inv:")
-    tracker.rm_from_player_inventory(gid, kali, "book")
-    pp.pprint(tracker.get_inventory_for_player(gid, kali))
-
-    # Non-existent inventory
-    print("Jane's non-existent inventory:")
-    if tracker.get_inventory_for_player(gid, jane) is None:
-        print("No inventory for that user.")
-    else:
-        print("Was not None...")
-
-    # Guild config
-    print("Configure Guild")
-    t = datetime.datetime.today().time()
-    session_day = Weekdays["sunday".upper()]
-    first_alert = Weekdays["Friday".upper()]
-    second_alert = Weekdays["SaTuRdAy".upper()]
-    tracker.create_guild_config(
-        12341234, jane, session_day, t, 111222333, first_alert, second_alert
-    )
-    pp.pprint(tracker.get_config_for_guild(12341234))
-    print(f"All guild configs with first-alert set to Friday ({Weekdays.FRIDAY}):")
-    for config in tracker.get_first_alert_configs(Weekdays.FRIDAY):
-        pp.pprint(config)
