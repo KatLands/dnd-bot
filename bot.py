@@ -110,18 +110,27 @@ async def list(ctx):
 @bot.group()
 async def inv(ctx):
     if ctx.invoked_subcommand is None:
-        one_per_line = "\n".join(
-            tracker.get_inventory_for_player(ctx.guild.id, ctx.message.author)
-        )
-        if len(one_per_line) == 0:
-            one_per_line = "<< Empty >>"
+        if (
+            len(
+                (
+                    inv := tracker.get_inventory_for_player(
+                        ctx.guild.id, ctx.message.author
+                    )
+                )
+            )
+            == 0
+        ):
+            inv_message = "<< Empty >>"
+        else:
+            inv_message = "\n".join([f"{i['qty']}:{i['item']}" for i in inv])
+
         await ctx.message.channel.send(
             embed=Embed().from_dict(
                 {
                     "fields": [
                         {
                             "name": f"__*{ctx.message.author.name}'s Inventory:*__",
-                            "value": one_per_line,
+                            "value": inv_message,
                         }
                     ]
                 }
@@ -152,7 +161,7 @@ async def update(ctx):
     unpacked_items = items.split(", ")
     for pair in unpacked_items:
         qty, item = pair.split(":")
-        tracker.rm_from_player_inventory(ctx.guild.id, ctx.author, item, qty)
+        tracker.update_player_inventory(ctx.guild.id, ctx.author, item, qty)
     await ctx.message.add_reaction("✅")
 
 

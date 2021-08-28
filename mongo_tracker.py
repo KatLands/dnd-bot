@@ -77,11 +77,11 @@ class Tracker:
 
     def get_inventory_for_player(self, guild_id, player):
         try:
-            return self.inventories.find_one({"guild": guild_id, "player": player})[
-                "inv"
-            ]
+            return self.inventories.find_one(
+                {"guild": guild_id, "player": self._get_user(player)}
+            )["inv"]
         except TypeError:
-            return None
+            return []
 
     def get_config_for_guild(self, guild_id):
         try:
