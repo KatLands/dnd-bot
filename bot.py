@@ -1,12 +1,12 @@
 from asyncio import TimeoutError
 from datetime import datetime
-from enum import Enum, unique
-from typing import List
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import Embed, Intents
 from pymongo import MongoClient
-from mongo_tracker import Tracker, Weekdays
+from tasks import BotTasks
+from helpers import plist, Weekdays, Emojis
+from mongo_tracker import Tracker
 
 try:
     import configparser
@@ -48,17 +48,6 @@ startTime = datetime.now().replace(microsecond=0)
 tracker = Tracker(
     MongoClient(host=db_host, port=db_port, password=db_password)["dnd-bot"]
 )
-
-
-@unique
-class Emojis(str, Enum):
-    MONDAY = "🇲"
-    TUESDAY = "🇹"
-    WENDESAY = "🇼"
-    THURSDAY = "🇷"
-    FRIDAY = "🇫"
-    SATURDAY = "🇸"
-    SUNDAY = "🇺"
 
 
 # Events
@@ -137,6 +126,12 @@ async def ask_for_day(ctx, ask):
 @bot.command()
 async def ping(ctx):
     await ctx.message.channel.send("I'm alive!")
+
+
+@bot.command()
+async def uptime(ctx):
+    now = datetime.now().replace(microsecond=0)
+    await ctx.message.channel.send(f"Up for {now - startTime}")
 
 
 @bot.command()
@@ -343,19 +338,21 @@ async def _cancel(ctx):
     )
 
 
-def plist(inlist: List) -> str:
-    if len(inlist) > 0:
-        return ", ".join([u["name"] for u in inlist])
-    else:
-        return "None"
+bt = BotTasks(bot)
 
 
-@bot.command()
-async def uptime(ctx):
-    now = datetime.now().replace(microsecond=0)
-    await ctx.message.channel.send(f"Up for {now - startTime}")
+@tasks.loop(minutes=2)
+def alert_dispatcher():
+    await bot.wait_until_ready()
+    today = datetime.now().weekday()
+    for config in tracker.get_first_alert_configs(today):
+        bt.first_alert(config)
+    for config in tracker.get_second_alert_configs(today):
+        bt.second_alert(config)
+    for config in tracker.get_session_day_configs(today):
+        bt.send_dm(config, tracker)
 
 
 if __name__ == "__main__":
-    # Start the bot
+    alert_dispatcher.start()
     bot.run(token)

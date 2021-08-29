@@ -1,26 +1,4 @@
-from enum import Enum, unique
-
-
-@unique
-class Collections(str, Enum):
-    ATTENDEES = "attendees"
-    DECLINERS = "decliners"
-    DREAMERS = "dreamers"
-    CANCELLERS = "cancellers"
-    INVENTORIES = "inventories"
-    CONFIG = "config"
-    PLAYERS = "players"
-
-
-@unique
-class Weekdays(int, Enum):
-    MONDAY = 0
-    TUESDAY = 1
-    WENDESAY = 2
-    THURSDAY = 3
-    FRIDAY = 4
-    SATURDAY = 5
-    SUNDAY = 6
+from helpers import Collections
 
 
 class Tracker:
@@ -32,6 +10,10 @@ class Tracker:
         self.inventories = db[Collections.INVENTORIES]
         self.config = db[Collections.CONFIG]
         self.players = db[Collections.PLAYERS]
+
+    @staticmethod
+    def _get_user(user):
+        return {"name": user.name, "id": user.id}
 
     def get_all(self, guild_id):
         attendees = self.get_attendees_for_guild(guild_id)
@@ -98,10 +80,6 @@ class Tracker:
             )[Collections.PLAYERS]
         except TypeError:
             return None
-
-    @staticmethod
-    def _get_user(user):
-        return {"name": user.name, "id": user.id}
 
     def reset(self, guild_id):
         query = {"guild": guild_id}
@@ -230,4 +208,9 @@ class Tracker:
     def get_second_alert_configs(self, day_of_the_week: int):
         return self.config.find(
             {"config.second-alert": day_of_the_week, "config.alerts": True}
+        )
+
+    def get_session_day_configs(self, day_of_the_week: int):
+        return self.config.find(
+            {"config.session-day": day_of_the_week, "config.alerts": True}
         )
