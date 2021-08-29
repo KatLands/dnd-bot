@@ -3,6 +3,8 @@ from mongo_tracker import Tracker
 from typing import List
 
 from datetime import datetime
+from enum import Enum, unique
+from asyncio import TimeoutError
 from discord import Embed, Intents
 from discord.ext import commands
 
@@ -50,6 +52,17 @@ tracker = Tracker(
 )
 
 
+@unique
+class Emojis(str, Enum):
+    MONDAY = "🇲"
+    TUESDAY = "🇹"
+    WENDESAY = "🇼"
+    THURSDAY = "🇷"
+    FRIDAY = "🇫"
+    SATURDAY = "🇸"
+    SUNDAY = "🇺"
+
+
 # Events
 @bot.event
 async def on_ready():
@@ -57,6 +70,25 @@ async def on_ready():
 
 
 # Commands
+@bot.command()
+async def config(ctx):
+    my_message = await ctx.message.channel.send("Config test: Days")
+    for emoji in Emojis:
+        await my_message.add_reaction(emoji.value)
+
+    def check(reaction, user):
+        return user == ctx.author and any(e.value == str(reaction) for e in Emojis)
+
+    try:
+        reaction, user = await bot.wait_for("reaction_add", timeout=10.0, check=check)
+    except TimeoutError:
+        await ctx.message.channel.send("Fail! React faster!")
+    else:
+        await ctx.message.channel.send(f"Got reaction: {reaction}")
+    finally:
+        await my_message.delete()
+
+
 @bot.command()
 async def ping(ctx):
     await ctx.message.channel.send("I'm alive!")
