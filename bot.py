@@ -15,11 +15,7 @@ try:
     config = configparser.ConfigParser()
     config.read("config.ini")
     token = config["secrets"]["token"]
-    session_time = config["session"]["time"]
-    session_day = config["session"]["day"]
-    channel_id = int(config["discord"]["channelID"])
     bot_prefix = config["discord"]["botPrefix"]
-    dm_id = config["discord"]["dmID"]
     db_host = config["db"]["host"]
     db_port = int(config["db"]["port"])
     db_password = config["db"]["password"]
@@ -28,11 +24,7 @@ except KeyError:
     from os import environ
 
     token = environ["token"]
-    session_time = environ["time"]
-    session_day = environ["day"]
-    channel_id = int(environ["channelID"])
     bot_prefix = environ["botPrefix"]
-    dm_id = environ["dmID"]
     db_host = environ["dbHost"]
     db_port = environ["dbPort"]
     db_password = environ["dbPassword"]
@@ -44,6 +36,7 @@ intents.members = True
 description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now().replace(microsecond=0)
+alert_time = 12
 
 tracker = Tracker(
     MongoClient(host=db_host, port=db_port, password=db_password)["dnd-bot"]
@@ -255,7 +248,7 @@ async def _accept(ctx):
                 "fields": [
                     {
                         "name": "Accepted",
-                        "value": f"Thanks for confirming. See you {session_day}!",
+                        "value": "Thanks for confirming!",
                     },
                     {
                         "name": "Attendees",
@@ -341,16 +334,18 @@ async def _cancel(ctx):
 bt = BotTasks(bot)
 
 
-@tasks.loop(minutes=2)
-def alert_dispatcher():
+@tasks.loop(hours=1)
+async def alert_dispatcher():
     await bot.wait_until_ready()
+    if int(datetime.now().strftime("%H")) != alert_time:
+        return
     today = datetime.now().weekday()
     for config in tracker.get_first_alert_configs(today):
-        bt.first_alert(config)
+        await bt.first_alert(config)
     for config in tracker.get_second_alert_configs(today):
-        bt.second_alert(config)
+        await bt.second_alert(config)
     for config in tracker.get_session_day_configs(today):
-        bt.send_dm(config, tracker)
+        await bt.send_dm(config, tracker)
 
 
 if __name__ == "__main__":
