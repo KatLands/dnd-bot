@@ -1,12 +1,12 @@
-from pymongo import MongoClient
-from mongo_tracker import Tracker
-from typing import List
-
+from asyncio import TimeoutError
 from datetime import datetime
 from enum import Enum, unique
-from asyncio import TimeoutError
-from discord import Embed, Intents
+from typing import List
+
 from discord.ext import commands
+from discord import Embed, Intents
+from pymongo import MongoClient
+from mongo_tracker import Tracker, Weekdays
 
 try:
     import configparser
@@ -24,7 +24,7 @@ try:
     db_port = int(config["db"]["port"])
     db_password = config["db"]["password"]
 except KeyError:
-    # fall back to environment variables
+    # Fall back to environment variables
     from os import environ
 
     token = environ["token"]
@@ -45,8 +45,6 @@ description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now().replace(microsecond=0)
 
-
-# Trackers
 tracker = Tracker(
     MongoClient(host=db_host, port=db_port, password=db_password)["dnd-bot"]
 )
@@ -72,7 +70,52 @@ async def on_ready():
 # Commands
 @bot.command()
 async def config(ctx):
-    my_message = await ctx.message.channel.send("Config test: Days")
+    questions = ["session day", "first alert", "second alert"]
+    answers = [await ask_for_day(ctx, q) for q in questions]
+
+    def map_emoji_to_day_value(emoji):
+        for e in Emojis:
+            if e.value == emoji:
+                return Weekdays[e.name].value
+
+    mapped_answers = [map_emoji_to_day_value(a) for a in answers]
+    config = {
+        questions[i].replace(" ", "-", 1): mapped_answers[i]
+        for i in range(len(mapped_answers))
+    }
+    config["session-time"] = await ask_for_time(ctx)
+    tracker.create_guild_config(
+        guild_id=ctx.guild.id,
+        dm_user=ctx.author,
+        session_day=config["session-day"],
+        session_time=config["session-time"],
+        meeting_room=ctx.message.channel.id,
+        first_alert=config["first-alert"],
+        second_alert=config["second-alert"],
+    )
+    await ctx.message.channel.send("Config saved!")
+
+
+async def ask_for_time(ctx):
+    my_message = await ctx.message.channel.send("Configure time (24h HH:MM):")
+
+    def check(m):
+        return ctx.author == m.author
+
+    try:
+        response = await bot.wait_for("message", timeout=30.0, check=check)
+    except TimeoutError:
+        await ctx.message.channel.send("Fail! React faster!")
+        to_return = None
+    else:
+        to_return = response.content.strip()
+    finally:
+        await my_message.delete()
+        return to_return
+
+
+async def ask_for_day(ctx, ask):
+    my_message = await ctx.message.channel.send(f"Configure: {ask}")
     for emoji in Emojis:
         await my_message.add_reaction(emoji.value)
 
@@ -80,13 +123,15 @@ async def config(ctx):
         return user == ctx.author and any(e.value == str(reaction) for e in Emojis)
 
     try:
-        reaction, user = await bot.wait_for("reaction_add", timeout=10.0, check=check)
+        reaction, _ = await bot.wait_for("reaction_add", timeout=10.0, check=check)
     except TimeoutError:
         await ctx.message.channel.send("Fail! React faster!")
+        to_return = None
     else:
-        await ctx.message.channel.send(f"Got reaction: {reaction}")
+        to_return = str(reaction)
     finally:
         await my_message.delete()
+        return to_return
 
 
 @bot.command()
@@ -208,9 +253,6 @@ async def rsvp(ctx):
 
 @rsvp.command(name="accept")
 async def _accept(ctx):
-    """
-    RSVP accept. Update attendees if needed.
-    """
     tracker.add_attendee_for_guild(ctx.guild.id, ctx.author)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -233,9 +275,6 @@ async def _accept(ctx):
 
 @rsvp.command(name="decline")
 async def _decline(ctx):
-    """
-    RSVP decline. Update attendees if needed.
-    """
     tracker.add_decliner_for_guild(ctx.guild.id, ctx.author)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -264,9 +303,6 @@ async def vote(ctx):
 
 @vote.command(name="dream")
 async def _dream(ctx):
-    """
-    Vote for a dream session.
-    """
     tracker.add_dreamer_for_guild(ctx.guild.id, ctx.author)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -288,9 +324,6 @@ async def _dream(ctx):
 
 @vote.command(name="cancel")
 async def _cancel(ctx):
-    """
-    Vote to cancel session.
-    """
     tracker.add_canceller_for_guild(ctx.guild.id, ctx.author)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -319,9 +352,6 @@ def plist(inlist: List) -> str:
 
 @bot.command()
 async def uptime(ctx):
-    """
-    Print uptime duration.
-    """
     now = datetime.now().replace(microsecond=0)
     await ctx.message.channel.send(f"Up for {now - startTime}")
 
