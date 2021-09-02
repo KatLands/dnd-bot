@@ -1,81 +1,42 @@
-from enum import Enum
-from typing import Tuple, Set
+from typing import List
+from enum import Enum, unique
 
 
-class Key(str, Enum):
-    ATTENDEES = "dnd-bot:unlocked:attendees"
-    DECLINERS = "dnd-bot:unlocked:decliners"
-    DREAMERS = "dnd-bot:unlocked:dreamers"
-    CANCELLERS = "dnd-bot:unlocked:cancellers"
-    SKIP = "dnd-bot:unlocked:skip"
-    INV = "dnd-bot:locked:inv"
+@unique
+class Collections(str, Enum):
+    ATTENDEES = "attendees"
+    DECLINERS = "decliners"
+    DREAMERS = "dreamers"
+    CANCELLERS = "cancellers"
+    INVENTORIES = "inventories"
+    CONFIG = "config"
+    PLAYERS = "players"
 
 
-# Trackers
-class Tracker:
-    def __init__(self, db):
-        self.db = db
+@unique
+class Weekdays(int, Enum):
+    MONDAY = 0
+    TUESDAY = 1
+    WENDESAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
+    SUNDAY = 6
 
-    def get_all(self) -> Tuple[Set, Set, Set, Set]:
-        return (
-            self.get_attendees(),
-            self.get_decliners(),
-            self.get_dreamers(),
-            self.get_cancellers(),
-            self.isSkip(),
-        )
 
-    def reset(self) -> bool:
-        return self.db.delete(*[key.value for key in Key if "dnd-bot:unlocked" in key.value])
+@unique
+class Emojis(str, Enum):
+    MONDAY = "🇲"
+    TUESDAY = "🇹"
+    WENDESAY = "🇼"
+    THURSDAY = "🇷"
+    FRIDAY = "🇫"
+    SATURDAY = "🇸"
+    SUNDAY = "🇺"
 
-    def skip(self) -> bool:
-        return self.db.set(Key.SKIP, "true")
 
-    def isSkip(self) -> bool:
-        return bool(self.db.get(Key.SKIP))
-
-    def get_attendees(self) -> Set:
-        return self.db.smembers(Key.ATTENDEES)
-
-    def add_attendee(self, attendee: str) -> bool:
-        return self.db.sadd(Key.ATTENDEES, attendee)
-
-    def remove_attendee(self, attendee: str) -> bool:
-        return self.db.srem(Key.ATTENDEES, attendee)
-
-    def add_decliner(self, decliner: str) -> bool:
-        return self.db.sadd(Key.DECLINERS, decliner)
-
-    def get_decliners(self) -> Set:
-        return self.db.smembers(Key.DECLINERS)
-
-    def remove_decliner(self, decliner: str) -> bool:
-        return self.db.srem(Key.DECLINERS, decliner)
-
-    def get_dreamers(self) -> Set:
-        return self.db.smembers(Key.DREAMERS)
-
-    def add_dreamer(self, dreamer: str) -> bool:
-        return self.db.sadd(Key.DREAMERS, dreamer)
-
-    def get_cancellers(self) -> Set:
-        return self.db.smembers(Key.CANCELLERS)
-
-    def add_canceller(self, canceller: str) -> bool:
-        return self.db.sadd(Key.CANCELLERS, canceller)
-    
-    def add_inv(self, author: int, inv: str) -> bool:
-        player_inv = self.inv_builder(author)
-        return self.db.sadd(player_inv, inv)
-
-    def remove_inv(self, author, inv: str) -> bool:
-        player_inv = self.inv_builder(author)
-        return self.db.srem(player_inv, inv)
-    
-    def get_inv(self, user: str) -> Set:
-        return self.db.smembers(self.inv_builder(user))
-
-    def inv_builder(self, author) -> str:
-        return f"{Key.INV}:{author}"
-
-    
+def plist(inlist: List) -> str:
+    if len(inlist) > 0:
+        return ", ".join([u["name"] for u in inlist])
+    else:
+        return "None"

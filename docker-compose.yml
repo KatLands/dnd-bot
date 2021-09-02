@@ -4,14 +4,14 @@ services:
         build: .
         container_name: dnd-bot
         links:
-            - redis
+            - mongo
         depends_on:
-            - redis
-    redis:
-        image: redis
+            - mongo
+    mongo:
+        image: mongo
         volumes:
-            - redis_data:/data
+            - mongo_data:/data/db
 
 volumes:
-    redis_data:
+    mongo_data:
         external: false
