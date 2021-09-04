@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from enum import Enum, unique
 
 
@@ -40,3 +40,12 @@ def plist(inlist: List) -> str:
         return ", ".join([u["name"] for u in inlist])
     else:
         return "None"
+
+
+def adjacent_days(dotw: int) -> Tuple[int, int]:
+    if dotw < 0 or dotw > 6:
+        raise ValueError
+    days = [i for i in range(len(Weekdays))]
+    before = days[(dotw - 1) % len(days)]
+    after = days[(dotw + 1) % len(days)]
+    return (before, after)

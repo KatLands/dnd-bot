@@ -32,3 +32,6 @@ class BotTasks:
             await dm.send(
                 f"Confirm List: {plist(tracker.get_attendees_for_guild(config['guild']))}\nDecline list: {plist(tracker.get_decliners_for_guild(config['guild']))}"
             )
+
+    def reset(self, config, tracker) -> None:
+        tracker.reset(config["guild"])
