@@ -155,7 +155,7 @@ class Tracker:
     def add_to_player_inventory(self, guild_id, player, item, qty):
         return self.inventories.update_one(
             {"guild": guild_id, "player": self._get_user(player)},
-            {"$addToSet": {"inv": {"item": item, "qty": qty}}},
+            {"$addToSet": {"inv": {"item": item.strip(), "qty": qty}}},
             upsert=True,
         )
 
@@ -167,7 +167,7 @@ class Tracker:
 
     def update_player_inventory(self, guild_id, player, item, qty):
         return self.inventories.update_one(
-            {"guild": guild_id, "player": self._get_user(player), "inv.item": item},
+            {"guild": guild_id, "player": self._get_user(player), "inv.item": item.strip()},
             {"$set": {"inv.$.qty": qty}},
         )
 
