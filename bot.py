@@ -5,20 +5,20 @@ from discord.ext import commands, tasks
 from discord import Embed, Intents
 from pymongo import MongoClient
 from tasks import BotTasks
-from helpers import plist, Weekdays, Emojis
+from helpers import adjacent_days, plist, Weekdays, Emojis
 from mongo_tracker import Tracker
 
 try:
     import configparser
 
     # Load config
-    config = configparser.ConfigParser()
-    config.read("config.ini")
-    token = config["secrets"]["token"]
-    bot_prefix = config["discord"]["botPrefix"]
-    db_host = config["db"]["host"]
-    db_port = int(config["db"]["port"])
-    db_password = config["db"]["password"]
+    bot_config = configparser.ConfigParser()
+    bot_config.read("config.ini")
+    token = bot_config["secrets"]["token"]
+    bot_prefix = bot_config["discord"]["botPrefix"]
+    db_host = bot_config["db"]["host"]
+    db_port = int(bot_config["db"]["port"])
+    db_password = bot_config["db"]["password"]
 except KeyError:
     # Fall back to environment variables
     from os import environ
@@ -26,7 +26,7 @@ except KeyError:
     token = environ["token"]
     bot_prefix = environ["botPrefix"]
     db_host = environ["dbHost"]
-    db_port = environ["dbPort"]
+    db_port = int(environ["dbPort"])
     db_password = environ["dbPassword"]
 
 
@@ -36,7 +36,6 @@ intents.members = True
 description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now().replace(microsecond=0)
-alert_time = 12
 
 tracker = Tracker(
     MongoClient(host=db_host, port=db_port, password=db_password)["dnd-bot"]
@@ -128,7 +127,7 @@ async def uptime(ctx):
 
 
 @bot.command()
-async def commands(ctx):
+async def cmds(ctx):
     await ctx.message.channel.send(
         embed=Embed().from_dict(
             {
@@ -332,6 +331,7 @@ async def _cancel(ctx):
 
 
 bt = BotTasks(bot)
+alert_time = 12
 
 
 @tasks.loop(hours=1)
@@ -340,12 +340,15 @@ async def alert_dispatcher():
     if int(datetime.now().strftime("%H")) != alert_time:
         return
     today = datetime.now().weekday()
+    day_before, _ = adjacent_days(today)
     for config in tracker.get_first_alert_configs(today):
         await bt.first_alert(config)
     for config in tracker.get_second_alert_configs(today):
         await bt.second_alert(config)
     for config in tracker.get_session_day_configs(today):
         await bt.send_dm(config, tracker)
+    for config in tracker.get_session_day_configs(day_before):
+        bt.reset(config, tracker)
 
 
 if __name__ == "__main__":
