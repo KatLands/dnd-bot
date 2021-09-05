@@ -48,4 +48,4 @@ def adjacent_days(dotw: int) -> Tuple[int, int]:
     days = [i for i in range(len(Weekdays))]
     before = days[(dotw - 1) % len(days)]
     after = days[(dotw + 1) % len(days)]
-    return (before, after)
+    return (int(before), int(after))
