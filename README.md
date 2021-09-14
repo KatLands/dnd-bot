@@ -21,6 +21,9 @@ All commands must be prefixed (e.g. `!ping`). The prefix is determined by the [s
   - `inv add QTY:ITEM_NAME, QTY:ITEM_NAME, [...]`: Add multiple items in quantity:name pairs.
   - `inv remove ITEM_NAME`: Removes item `ITEM_NAME` from inventory. Note, this does not _use_ (decrement quantity) an item, but removes it completely.
   - `inv update QTY:ITEM_NAME, QTY:ITEM_NAME, [...]`: Update the quantities of multiple items.
+- `register`: Registers player to their specific guild to be counted as a member of the game. This helps manage the count for messages/reminders pushed to the server channel.
+- `unregister`: Unregisters player from the game.
+- `players`: Displays list of current registered players with their username and unique ID.
 
 
 ## Config
