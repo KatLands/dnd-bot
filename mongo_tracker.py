@@ -218,3 +218,21 @@ class Tracker:
         return self.config.find(
             {"config.session-day": day_of_the_week, "config.alerts": True}
         )
+
+    def register_player(self, guild_id: int, player):
+        return self.players.update_one(
+            {"guild": guild_id},
+            {"$addToSet": {Collections.PLAYERS: self._get_user(player)}},
+            upsert=True,
+        )
+
+    def unregister_player(self, guild_id: int, player):
+        return self.players.update_one(
+            {"guild": guild_id},
+            {"$pull": {Collections.PLAYERS: self._get_user(player)}},
+        )
+
+    def is_full_group(self, guild_id: int) -> bool:
+        players = [player["id"] for player in self.get_players_for_guild(guild_id)]
+        attendees = [att["id"] for att in self.get_attendees_for_guild(guild_id)]
+        return players.sort() == attendees.sort()

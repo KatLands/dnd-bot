@@ -50,6 +50,17 @@ async def on_ready():
 
 # Commands
 @bot.command()
+async def ping(ctx):
+    await ctx.message.channel.send("I'm alive!")
+
+
+@bot.command()
+async def uptime(ctx):
+    now = datetime.now().replace(microsecond=0)
+    await ctx.message.channel.send(f"Up for {now - startTime}")
+
+
+@bot.command()
 async def config(ctx):
     questions = ["session day", "first alert", "second alert"]
     answers = [await ask_for_day(ctx, q) for q in questions]
@@ -116,14 +127,31 @@ async def ask_for_day(ctx, ask):
 
 
 @bot.command()
-async def ping(ctx):
-    await ctx.message.channel.send("I'm alive!")
+async def register(ctx):
+    tracker.register_player(ctx.guild.id, ctx.author)
+    await ctx.message.add_reaction("✅")
 
 
 @bot.command()
-async def uptime(ctx):
-    now = datetime.now().replace(microsecond=0)
-    await ctx.message.channel.send(f"Up for {now - startTime}")
+async def unregister(ctx):
+    tracker.unregister_player(ctx.guild.id, ctx.author)
+    await ctx.message.add_reaction("✅")
+
+
+@bot.command()
+async def players(ctx):
+    players = tracker.get_players_for_guild(ctx.guild.id)
+    await ctx.message.channel.send(
+        embed=Embed().from_dict(
+            {
+                "title": "Registered Players",
+                "fields": [
+                    {"name": player["name"], "value": f"ID: {player['id']}"}
+                    for player in players
+                ],
+            }
+        )
+    )
 
 
 @bot.command()
@@ -342,13 +370,16 @@ async def alert_dispatcher():
     today = datetime.now().weekday()
     day_before, _ = adjacent_days(today)
     for config in tracker.get_first_alert_configs(today):
-        await bt.first_alert(config)
+        if not tracker.is_full_group(config["guild"]):
+            await bt.first_alert(config)
     for config in tracker.get_second_alert_configs(today):
-        await bt.second_alert(config)
+        if not tracker.is_full_group(config["guild"]):
+            await bt.second_alert(config)
     for config in tracker.get_session_day_configs(today):
         await bt.send_dm(config, tracker)
     for config in tracker.get_session_day_configs(day_before):
-        bt.reset(config, tracker)
+        if not tracker.is_full_group(config["guild"]):
+            bt.reset(config, tracker)
 
 
 if __name__ == "__main__":
