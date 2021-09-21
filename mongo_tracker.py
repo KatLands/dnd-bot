@@ -235,4 +235,4 @@ class Tracker:
     def is_full_group(self, guild_id: int) -> bool:
         players = [player["id"] for player in self.get_players_for_guild(guild_id)]
         attendees = [att["id"] for att in self.get_attendees_for_guild(guild_id)]
-        return players.sort() == attendees.sort()
+        return len(players) == len(attendees)
