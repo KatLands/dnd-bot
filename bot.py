@@ -19,6 +19,7 @@ try:
     db_host = bot_config["db"]["host"]
     db_port = int(bot_config["db"]["port"])
     db_password = bot_config["db"]["password"]
+    alert_time = int(bot_config["alerts"]["time"])
 except KeyError:
     # Fall back to environment variables
     from os import environ
@@ -28,6 +29,7 @@ except KeyError:
     db_host = environ["dbHost"]
     db_port = int(environ["dbPort"])
     db_password = environ["dbPassword"]
+    alert_time = int(environ["alertTime"])
 
 
 # Bot init
@@ -359,7 +361,6 @@ async def _cancel(ctx):
 
 
 bt = BotTasks(bot)
-alert_time = 12
 
 
 @tasks.loop(hours=1)
