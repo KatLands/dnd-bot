@@ -1,9 +1,11 @@
 from asyncio import TimeoutError
 from datetime import datetime
+from subprocess import check_output
 
 from discord.ext import commands, tasks
 from discord import Embed, Intents
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 from tasks import BotTasks
 from helpers import adjacent_days, plist, Weekdays, Emojis
 from mongo_tracker import Tracker
@@ -39,9 +41,8 @@ description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now().replace(microsecond=0)
 
-tracker = Tracker(
-    MongoClient(host=db_host, port=db_port, password=db_password)["dnd-bot"]
-)
+dbh = MongoClient(host=db_host, port=db_port, password=db_password)
+tracker = Tracker(dbh["dnd-bot"])
 
 
 # Events
@@ -52,14 +53,18 @@ async def on_ready():
 
 # Commands
 @bot.command()
-async def ping(ctx):
-    await ctx.message.channel.send("I'm alive!")
-
-
-@bot.command()
-async def uptime(ctx):
+async def status(ctx):
+    try:
+        dbh.admin.command("ping")
+    except ConnectionFailure:
+        db_status = "offline"
+    else:
+        db_status = "online"
+    git = check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
     now = datetime.now().replace(microsecond=0)
-    await ctx.message.channel.send(f"Up for {now - startTime}")
+    await ctx.message.channel.send(
+        f"Up for **{now - startTime}** on `{git}`. Database is **{db_status}**."
+    )
 
 
 @bot.command()
