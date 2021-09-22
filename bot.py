@@ -62,7 +62,9 @@ async def status(ctx):
         db_status = "online"
     git = check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
     now = datetime.now().replace(microsecond=0)
-    await ctx.message.channel.send(f"Up for **{now - startTime}** on `{git}`. Database is **{db_status}**.")
+    await ctx.message.channel.send(
+        f"Up for **{now - startTime}** on `{git}`. Database is **{db_status}**."
+    )
 
 
 @bot.command()
