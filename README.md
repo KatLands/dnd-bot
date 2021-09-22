@@ -7,8 +7,7 @@ Bot to help you heard your players.
 
 All commands must be prefixed (e.g. `!ping`). The prefix is determined by the [server-side config](#config).
 
-- `ping`: Ensure the bot is running with a friendly message.
-- `uptime`: How long the bot has been running.
+- `status`: How long the bot has been running, what `git` hash is running, and the status of the database connection. This command may take some time to return if the database is unavailable.
 - `config`: Walks the DM through configuring the bot.
 - `commands`: Lists all available commands.
 - `reset`: Resets the RSVP and voting lists.
