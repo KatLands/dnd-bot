@@ -384,8 +384,7 @@ async def alert_dispatcher():
     for config in tracker.get_session_day_configs(today):
         await bt.send_dm(config, tracker)
     for config in tracker.get_session_day_configs(day_before):
-        if not tracker.is_full_group(config["guild"]):
-            bt.reset(config, tracker)
+        bt.reset(config, tracker)
 
 
 if __name__ == "__main__":
