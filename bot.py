@@ -134,14 +134,14 @@ async def ask_for_day(ctx, ask):
 
 
 @bot.command()
-async def register(ctx):
-    tracker.register_player(ctx.guild.id, ctx.author)
-    await ctx.message.add_reaction("✅")
+async def unconfig(ctx):
+    tracker.rm_guild_config(ctx.guild.id)
+    await ctx.message.add_reaction("👋")
 
 
 @bot.command()
-async def unregister(ctx):
-    tracker.unregister_player(ctx.guild.id, ctx.author)
+async def register(ctx):
+    tracker.register_player(ctx.guild.id, ctx.author)
     await ctx.message.add_reaction("✅")
 
 
