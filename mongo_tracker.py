@@ -204,6 +204,10 @@ class Tracker:
             upsert=True,
         )
 
+    def rm_guild_config(self, guild_id):
+        query = {"guild": guild_id}
+        return self.config.delete_one(query)
+
     def get_first_alert_configs(self, day_of_the_week: int):
         return self.config.find(
             {"config.first-alert": day_of_the_week, "config.alerts": True}
