@@ -20,7 +20,7 @@ class Tracker:
         decliners = self.get_decliners_for_guild(guild_id)
         dreamers = self.get_dreamers_for_guild(guild_id)
         cancellers = self.get_cancellers_for_guild(guild_id)
-        return (attendees, decliners, dreamers, cancellers)
+        return attendees, decliners, dreamers, cancellers
 
     def get_attendees_for_guild(self, guild_id):
         try:
@@ -90,7 +90,8 @@ class Tracker:
 
     def skip(self, guild_id):
         query = {"guild": guild_id}
-        self.db.config.update_one({query}, {"config.alerts": False})
+        # self.db.config.update_one({query}, {"config.alerts": False})
+        self.config.update_one({query}, {"config.alerts": False})
 
     def add_attendee_for_guild(self, guild_id, attendee):
         return self.attendees.update_one(
