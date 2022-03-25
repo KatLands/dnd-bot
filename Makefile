@@ -8,4 +8,4 @@ logs:
 	sudo docker-compose logs
 
 mongo:
-	sudo docker exec -it dnd-bot_mongo_1 mongosh
+	sudo docker exec -it dnd-bot-mongo-1 mongosh
