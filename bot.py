@@ -2,8 +2,9 @@ from asyncio import TimeoutError
 from datetime import datetime
 from subprocess import check_output
 
-from discord.ext import commands, tasks
-from discord import Embed, Intents
+import discord
+from discord import Embed, app_commands
+from discord.ext import tasks
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from tasks import BotTasks
@@ -17,7 +18,8 @@ try:
     bot_config = configparser.ConfigParser()
     bot_config.read("config.ini")
     token = bot_config["secrets"]["token"]
-    bot_prefix = bot_config["discord"]["botPrefix"]
+    guild_id = int(bot_config["secrets"]["guild_id"])
+    app_id = int(bot_config["secrets"]["application_id"])
     db_host = bot_config["db"]["host"]
     db_port = int(bot_config["db"]["port"])
     db_password = bot_config["db"]["password"]
@@ -27,18 +29,22 @@ except KeyError:
     from os import environ
 
     token = environ["token"]
-    bot_prefix = environ["botPrefix"]
+    guild_id = int(environ["guildID"])
+    app_id = int(environ["appID"])
     db_host = environ["dbHost"]
     db_port = int(environ["dbPort"])
     db_password = environ["dbPassword"]
     alert_time = int(environ["alertTime"])
 
-
 # Bot init
-intents = Intents.default()
+intents = discord.Intents.default()
+intents.message_content = True
 intents.members = True
-description = """A bot to assist with hearding players for D&D sessions."""
-bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
+# Changing the bot's "About Me" hasn't been implemented yet; use the dev portal for now #
+# description = """A bot to assist with herding players for D&D sessions."""
+# bot = discord.Client(description=description, intents=intents, application_id=app_id)
+bot = discord.Client(intents=intents, application_id=app_id)
+tree = app_commands.CommandTree(bot)
 startTime = datetime.now().replace(microsecond=0)
 
 dbh = MongoClient(host=db_host, port=db_port, password=db_password)
@@ -47,13 +53,20 @@ tracker = Tracker(dbh["dnd-bot"])
 
 # Events
 @bot.event
+async def setup_hook():
+    await tree.sync(guild=discord.Object(id=guild_id))  # Syncs the application commands to Discord
+    print(f"Slash synced")
+
+
+@bot.event
 async def on_ready():
     print(f"[{startTime}] - Logged in as {bot.user.name} - {bot.user.id}")
 
 
 # Commands
-@bot.command()
-async def status(ctx):
+@tree.command(guild=discord.Object(id=guild_id))
+async def status(interaction: discord.Interaction):
+    """Get bot uptime, git commit id, and database status."""
     try:
         dbh.admin.command("ping")
     except ConnectionFailure:
@@ -62,13 +75,15 @@ async def status(ctx):
         db_status = "online"
     git = check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
     now = datetime.now().replace(microsecond=0)
-    await ctx.message.channel.send(
+    await interaction.response.send_message(
         f"Up for **{now - startTime}** on `{git}`. Database is **{db_status}**."
     )
 
 
-@bot.command()
-async def config(ctx):
+# config
+@tree.command(guild=discord.Object(id=guild_id))
+async def config(interaction: discord.Interaction):
+    """Configure D&D meeting schedule"""
     questions = ["session day", "first alert", "second alert"]
     answers = [await ask_for_day(ctx, q) for q in questions]
 
@@ -84,7 +99,7 @@ async def config(ctx):
     }
     config["session-time"] = await ask_for_time(ctx)
     tracker.create_guild_config(
-        guild_id=ctx.guild.id,
+        guild_id=guild_id,
         dm_user=ctx.author,
         session_day=config["session-day"],
         session_time=config["session-time"],
@@ -92,11 +107,11 @@ async def config(ctx):
         first_alert=config["first-alert"],
         second_alert=config["second-alert"],
     )
-    await ctx.message.channel.send("Config saved!")
+    await interaction.response.send_message(f'Config saved!')
 
 
-async def ask_for_time(ctx):
-    my_message = await ctx.message.channel.send("Configure time (24h HH:MM):")
+async def ask_for_time(interaction: discord.Interaction):
+    my_message = await interaction.response.send_message("Configure time (24h HH:MM):")
 
     def check(m):
         return ctx.author == m.author
@@ -104,7 +119,7 @@ async def ask_for_time(ctx):
     try:
         response = await bot.wait_for("message", timeout=30.0, check=check)
     except TimeoutError:
-        await ctx.message.channel.send("Fail! React faster!")
+        await interaction.response.send_message("Fail! React faster!")
         to_return = None
     else:
         to_return = response.content.strip()
@@ -113,8 +128,8 @@ async def ask_for_time(ctx):
         return to_return
 
 
-async def ask_for_day(ctx, ask):
-    my_message = await ctx.message.channel.send(f"Configure: {ask}")
+async def ask_for_day(ctx, ask, interaction: discord.Interaction):
+    my_message = await interaction.response.send_message(f"Configure: {ask}")
     for emoji in Emojis:
         await my_message.add_reaction(emoji.value)
 
@@ -124,7 +139,7 @@ async def ask_for_day(ctx, ask):
     try:
         reaction, _ = await bot.wait_for("reaction_add", timeout=10.0, check=check)
     except TimeoutError:
-        await ctx.message.channel.send("Fail! React faster!")
+        await interaction.response.send_message("Fail! React faster!")
         to_return = None
     else:
         to_return = str(reaction)
@@ -133,22 +148,28 @@ async def ask_for_day(ctx, ask):
         return to_return
 
 
-@bot.command()
-async def unconfig(ctx):
-    tracker.rm_guild_config(ctx.guild.id)
-    await ctx.message.add_reaction("👋")
+# uncofig
+@tree.command(guild=discord.Object(id=guild_id))
+async def unconfig(interaction: discord.Interaction):
+    """Remove meeting configuration"""
+    tracker.rm_guild_config(guild_id)
+    await interaction.response.send_message("👋")
 
 
-@bot.command()
-async def register(ctx):
-    tracker.register_player(ctx.guild.id, ctx.author)
-    await ctx.message.add_reaction("✅")
+# register
+@tree.command(guild=discord.Object(id=guild_id))
+async def register(interaction: discord.Interaction):
+    """Register yourself as a player"""
+    tracker.register_player(guild_id, interaction.user)
+    await interaction.response.send_message("✅")
 
 
-@bot.command()
-async def players(ctx):
-    players = tracker.get_players_for_guild(ctx.guild.id)
-    await ctx.message.channel.send(
+# players
+@tree.command(guild=discord.Object(id=guild_id))
+async def players(interaction: discord.Interaction):
+    """List all registered players"""
+    players = tracker.get_players_for_guild(guild_id)
+    await interaction.response.send_message(
         embed=Embed().from_dict(
             {
                 "title": "Registered Players",
@@ -161,36 +182,28 @@ async def players(ctx):
     )
 
 
-@bot.command()
-async def cmds(ctx):
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "title": "Available Commands",
-                "fields": [
-                    {"name": cmd.name, "value": f"`{cmd.name}`"} for cmd in bot.commands
-                ],
-            }
-        )
-    )
+# reset
+@tree.command(guild=discord.Object(id=guild_id))
+async def reset(interaction: discord.Interaction):
+    """Reset everything"""
+    tracker.reset(guild_id)
+    await interaction.response.send_message("✅")
 
 
-@bot.command()
-async def reset(ctx):
-    tracker.reset(ctx.guild.id)
-    await ctx.message.add_reaction("✅")
+# skip
+@tree.command(guild=discord.Object(id=guild_id))
+async def skip(interaction: discord.Interaction):
+    """Skip the meeting this week"""
+    tracker.skip(guild_id)
+    await interaction.response.send_message(f'Skipping this week!')
 
 
-@bot.command()
-async def skip(ctx):
-    tracker.skip(ctx.guild.id)
-    await ctx.message.channel.send("Skipping this week!")
-
-
-@bot.command()
-async def list(ctx):
-    accept, decline, dream, cancel = tracker.get_all(ctx.guild.id)
-    await ctx.message.channel.send(
+# list
+@tree.command(guild=discord.Object(id=guild_id))
+async def list(interaction: discord.Interaction):
+    """List player statuses"""
+    accept, decline, dream, cancel = tracker.get_all(guild_id)
+    await interaction.response.send_message(
         embed=Embed().from_dict(
             {
                 "title": "Lists",
@@ -205,188 +218,188 @@ async def list(ctx):
     )
 
 
-# Support inv [add|remove]
-@bot.group()
-async def inv(ctx):
-    if ctx.invoked_subcommand is None:
-        if (
-            len(
-                (
-                    inv := tracker.get_inventory_for_player(
-                        ctx.guild.id, ctx.message.author
+##############################################
+
+# Support inventory [add|remove]
+class Inventory(app_commands.Group):
+    async def inv(self, ctx, interaction: discord.Interaction):
+        if ctx.invoked_subcommand is None:
+            if (
+                    len(
+                        (
+                                inv := tracker.get_inventory_for_player(
+                                    guild_id, ctx.message.author
+                                )
+                        )
                     )
+                    == 0
+            ):
+                inv_message = "<< Empty >>"
+            else:
+                inv_message = "\n".join([f"{i['qty']}:{i['item']}" for i in inv])
+
+            await interaction.response.send_message(
+                embed=Embed().from_dict(
+                    {
+                        "fields": [
+                            {
+                                "name": f"__*{ctx.message.author.name}'s Inventory:*__",
+                                "value": inv_message,
+                            }
+                        ]
+                    }
                 )
             )
-            == 0
-        ):
-            inv_message = "<< Empty >>"
-        else:
-            inv_message = "\n".join([f"{i['qty']}:{i['item']}" for i in inv])
 
-        await ctx.message.channel.send(
+    @app_commands.command(description="Add an item to your inventory")
+    async def add(self, interaction: discord.Interaction):
+        _, _, items = ctx.message.content.split(" ", 2)
+        unpacked_items = items.split(", ")
+        for pair in unpacked_items:
+            qty, item = pair.split(":")
+            tracker.add_to_player_inventory(guild_id, ctx.author, item, qty)
+        await interaction.response.send_message("✅")
+
+    @app_commands.command(description="Remove an item from your inventory")
+    async def remove(self, interaction: discord.Interaction):
+        _, _, item = ctx.message.content.split(" ", 2)
+        tracker.rm_from_player_inventory(guild_id, ctx.author, item)
+        await interaction.response.send_message("✅")
+
+    @app_commands.command(description="Update an item in your inventory")
+    async def update(self, interaction: discord.Interaction):
+        _, _, items = ctx.message.content.split(" ", 2)
+        unpacked_items = items.split(", ")
+        for pair in unpacked_items:
+            qty, item = pair.split(":")
+            tracker.update_player_inventory(guild_id, ctx.author, item, qty)
+        await interaction.response.send_message("✅")
+
+
+# To add the Inventory group to your tree
+tree.add_command(Inventory(), guild=discord.Object(id=guild_id))
+
+
+# Support rsvp [accept|decline]
+class Rsvp(app_commands.Group):  # capitalizing all letters makes this break
+    async def rsvp(self):
+        pass
+
+    @app_commands.command(description="Accept RSVP invitation")
+    async def accept(self, interaction: discord.Interaction):
+        tracker.add_attendee_for_guild(guild_id, ctx.author)
+        await interaction.response.send_message(
             embed=Embed().from_dict(
                 {
                     "fields": [
                         {
-                            "name": f"__*{ctx.message.author.name}'s Inventory:*__",
-                            "value": inv_message,
-                        }
+                            "name": "Accepted",
+                            "value": "Thanks for confirming!",
+                        },
+                        {
+                            "name": "Attendees",
+                            "value": plist(tracker.get_attendees_for_guild(guild_id)),
+                        },
+                    ]
+                }
+            )
+        )
+        tracker.rm_decliner_for_guild(guild_id, ctx.author)
+
+    @app_commands.command(description="Decline RSVP invitation")
+    async def decline(self, interaction: discord.Interaction):
+        tracker.add_decliner_for_guild(guild_id, ctx.author)
+        await interaction.response.send_message(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {"name": "Declined", "value": "No problem, see you next time!"},
+                        {
+                            "name": "Those that have declined",
+                            "value": plist(tracker.get_decliners_for_guild(guild_id)),
+                        },
+                    ]
+                }
+            )
+        )
+        tracker.rm_attendee_for_guild(guild_id, ctx.author)
+
+
+# To add the RSVP group to your tree
+tree.add_command(Rsvp(), guild=discord.Object(id=guild_id))
+
+
+# Support vote [dream|cancel]
+class Vote(app_commands.Group):
+    async def vote(self):
+        pass
+
+    @app_commands.command(description="Add yourself to the dreaming list")
+    async def dream(self, interaction: discord.Interaction):
+        tracker.add_dreamer_for_guild(guild_id, ctx.author)
+        await interaction.response.send_message(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": "Dreaming",
+                            "value": "You've been added to the dreaming list!",
+                        },
+                        {
+                            "name": "Other dreamers",
+                            "value": plist(tracker.get_dreamers_for_guild(guild_id)),
+                        },
+                    ]
+                }
+            )
+        )
+
+    @app_commands.command(description="Vote to cancel")
+    async def cancel(self, interaction: discord.Interaction):
+        tracker.add_canceller_for_guild(guild_id, ctx.author)
+        await interaction.response.send_message(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": "Cancelling",
+                            "value": "You've voted to cancel this week.",
+                        },
+                        {
+                            "name": "Others that have cancelled",
+                            "value": plist(tracker.get_cancellers_for_guild(guild_id)),
+                        },
                     ]
                 }
             )
         )
 
 
-@inv.command(name="add")
-async def add(ctx):
-    _, _, items = ctx.message.content.split(" ", 2)
-    unpacked_items = items.split(", ")
-    for pair in unpacked_items:
-        qty, item = pair.split(":")
-        tracker.add_to_player_inventory(ctx.guild.id, ctx.author, item, qty)
-    await ctx.message.add_reaction("✅")
-
-
-@inv.command(name="remove")
-async def remove(ctx):
-    _, _, item = ctx.message.content.split(" ", 2)
-    tracker.rm_from_player_inventory(ctx.guild.id, ctx.author, item)
-    await ctx.message.add_reaction("✅")
-
-
-@inv.command(name="update")
-async def update(ctx):
-    _, _, items = ctx.message.content.split(" ", 2)
-    unpacked_items = items.split(", ")
-    for pair in unpacked_items:
-        qty, item = pair.split(":")
-        tracker.update_player_inventory(ctx.guild.id, ctx.author, item, qty)
-    await ctx.message.add_reaction("✅")
-
-
-# Support rsvp [accept|decline]
-@bot.group()
-async def rsvp(ctx):
-    if ctx.invoked_subcommand is None:
-        await ctx.message.channel.send(
-            f"Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`."
-        )
-
-
-@rsvp.command(name="accept")
-async def _accept(ctx):
-    tracker.add_attendee_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Accepted",
-                        "value": "Thanks for confirming!",
-                    },
-                    {
-                        "name": "Attendees",
-                        "value": plist(tracker.get_attendees_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
-        )
-    )
-    tracker.rm_decliner_for_guild(ctx.guild.id, ctx.author)
-
-
-@rsvp.command(name="decline")
-async def _decline(ctx):
-    tracker.add_decliner_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {"name": "Declined", "value": "No problem, see you next time!"},
-                    {
-                        "name": "Those that have declined",
-                        "value": plist(tracker.get_decliners_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
-        )
-    )
-    tracker.rm_attendee_for_guild(ctx.guild.id, ctx.author)
-
-
-# Support vote [dream|cancel]
-@bot.group()
-async def vote(ctx):
-    if ctx.invoked_subcommand is None:
-        await ctx.message.channel.send(
-            f"Please `{bot_prefix}vote dream` or `{bot_prefix}vote cancel`"
-        )
-
-
-@vote.command(name="dream")
-async def _dream(ctx):
-    tracker.add_dreamer_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Dreaming",
-                        "value": "You've been added to the dreaming list!",
-                    },
-                    {
-                        "name": "Other dreamers",
-                        "value": plist(tracker.get_dreamers_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
-        )
-    )
-
-
-@vote.command(name="cancel")
-async def _cancel(ctx):
-    tracker.add_canceller_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Cancelling",
-                        "value": "You've voted to cancel this week.",
-                    },
-                    {
-                        "name": "Others that have cancelled",
-                        "value": plist(tracker.get_cancellers_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
-        )
-    )
-
+# To add the Vote group to your tree
+tree.add_command(Vote(), guild=discord.Object(id=guild_id))
 
 bt = BotTasks(bot)
 
 
-@tasks.loop(hours=1)
-async def alert_dispatcher():
-    await bot.wait_until_ready()
-    if int(datetime.now().strftime("%H")) != alert_time:
-        return
-    today = datetime.now().weekday()
-    day_before, _ = adjacent_days(today)
-    for config in tracker.get_first_alert_configs(today):
-        if not tracker.is_full_group(config["guild"]):
-            await bt.first_alert(config)
-    for config in tracker.get_second_alert_configs(today):
-        if not tracker.is_full_group(config["guild"]):
-            await bt.second_alert(config)
-    for config in tracker.get_session_day_configs(today):
-        await bt.send_dm(config, tracker)
-    for config in tracker.get_session_day_configs(day_before):
-        bt.reset(config, tracker)
+# @tasks.loop(hours=1)
+# async def alert_dispatcher():
+#     await bot.wait_until_ready()
+#     if int(datetime.now().strftime("%H")) != alert_time:
+#         return
+#     today = datetime.now().weekday()
+#     day_before, _ = adjacent_days(today)
+#     for config in tracker.get_first_alert_configs(today):
+#         if not tracker.is_full_group(config["guild"]):
+#             await bt.first_alert(config)
+#     for config in tracker.get_second_alert_configs(today):
+#         if not tracker.is_full_group(config["guild"]):
+#             await bt.second_alert(config)
+#     for config in tracker.get_session_day_configs(today):
+#         await bt.send_dm(config, tracker)
+#     for config in tracker.get_session_day_configs(day_before):
+#         bt.reset(config, tracker)
 
 
 if __name__ == "__main__":
-    alert_dispatcher.start()
+    # alert_dispatcher.start()
     bot.run(token)
