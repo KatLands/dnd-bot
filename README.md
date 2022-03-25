@@ -1,11 +1,11 @@
 # Discord D&D Gathering Bot
 
-Bot to help you heard your players.
+Bot to help you herd your players.
 
 
 ## Commands
 
-All commands must be prefixed (e.g. `!ping`). The prefix is determined by the [server-side config](#config).
+All commands must be prefixed with a slash (e.g. `/ping`).
 
 - `status`: How long the bot has been running, what `git` hash is running, and the status of the database connection. This command may take some time to return if the database is unavailable.
 - `config`: Walks the DM through configuring the bot.
@@ -32,17 +32,18 @@ Server-side configuration is done via a config file. Copy `config-template.ini` 
 ```ini
 [secrets]
 token = BOT_TOKEN_HERE
-
-[discord]
-
-# If you want %, you'll need this as %%
-botPrefix =
+guild_id = GUILD_ID_HERE
+application_id = APP_ID_HERE
 
 [db]
 # MongoDB connection details
 host =
 port =
 password =
+
+[alerts]
+time =
+
 ```
 
 > Note: This can all be done with environment variables instead. In the absence of a config file, the bot will fall 
@@ -51,7 +52,7 @@ password =
 
 ## Discord Config
 
-After inviting the bot, the DM should use the `config` command in the "meeting hall" channel (i.e. the channel you wish 
+After inviting the bot, the DM should use the `/config` command in the "meeting hall" channel (i.e. the channel you wish 
 to receive alerts and keep track of players).
 
 - session day: Day of the session.
