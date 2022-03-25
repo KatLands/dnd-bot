@@ -7,8 +7,13 @@ services:
             - mongo
         depends_on:
             - mongo
+        network_mode: service:mongo
+        environment:
+            - MONGODB_URI=mongodb://mongo:27017
     mongo:
         image: mongo
+        ports:
+            - "27017:27017"
         volumes:
             - mongo_data:/data/db
 
