@@ -3,8 +3,6 @@ services:
     bot:
         build: .
         container_name: dnd-bot
-        links:
-            - mongo
         depends_on:
             - mongo
         network_mode: service:mongo
