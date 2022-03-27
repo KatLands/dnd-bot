@@ -220,59 +220,59 @@ async def list(interaction: discord.Interaction):
 
 ##############################################
 
-# Support inventory [add|remove]
+# Support inventory [show|add|remove]
 class Inventory(app_commands.Group):
-    async def inv(self, ctx, interaction: discord.Interaction):
-        if ctx.invoked_subcommand is None:
-            if (
-                    len(
-                        (
-                                inv := tracker.get_inventory_for_player(
-                                    guild_id, ctx.message.author
-                                )
-                        )
+    @app_commands.command(description="Show items in your inventory")
+    async def show(self, interaction: discord.Interaction):
+        if (
+                len(
+                    (
+                            inv := tracker.get_inventory_for_player(
+                                guild_id, interaction.user
+                            )
                     )
-                    == 0
-            ):
-                inv_message = "<< Empty >>"
-            else:
-                inv_message = "\n".join([f"{i['qty']}:{i['item']}" for i in inv])
-
-            await interaction.response.send_message(
-                embed=Embed().from_dict(
-                    {
-                        "fields": [
-                            {
-                                "name": f"__*{ctx.message.author.name}'s Inventory:*__",
-                                "value": inv_message,
-                            }
-                        ]
-                    }
                 )
+                == 0
+        ):
+            inv_message = "<< Empty >>"
+        else:
+            inv_message = "\n".join([f"{i['qty']}:{i['item']}" for i in inv])
+
+        await interaction.response.send_message(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": f"__*{interaction.user}'s Inventory:*__",
+                            "value": inv_message,
+                        }
+                    ]
+                }
             )
+        )
 
     @app_commands.command(description="Add an item to your inventory")
-    async def add(self, interaction: discord.Interaction):
-        _, _, items = ctx.message.content.split(" ", 2)
-        unpacked_items = items.split(", ")
-        for pair in unpacked_items:
-            qty, item = pair.split(":")
-            tracker.add_to_player_inventory(guild_id, ctx.author, item, qty)
+    async def add(self, interaction: discord.Interaction, qty: int, item: str):
+        # _, _, items = content.split(" ", 2)
+        # unpacked_items = items.split(", ")
+        # for pair in unpacked_items:
+        # qty, item = pair.split(":")
+        tracker.add_to_player_inventory(guild_id, interaction.user, item, qty)
         await interaction.response.send_message("✅")
 
     @app_commands.command(description="Remove an item from your inventory")
-    async def remove(self, interaction: discord.Interaction):
-        _, _, item = ctx.message.content.split(" ", 2)
-        tracker.rm_from_player_inventory(guild_id, ctx.author, item)
+    async def remove(self, interaction: discord.Interaction, item: str):
+        # _, _, item = content.split(" ", 2)
+        tracker.rm_from_player_inventory(guild_id, interaction.user, item) # removes all????
         await interaction.response.send_message("✅")
 
     @app_commands.command(description="Update an item in your inventory")
-    async def update(self, interaction: discord.Interaction):
-        _, _, items = ctx.message.content.split(" ", 2)
-        unpacked_items = items.split(", ")
-        for pair in unpacked_items:
-            qty, item = pair.split(":")
-            tracker.update_player_inventory(guild_id, ctx.author, item, qty)
+    async def update(self, interaction: discord.Interaction, qty: int, item: str):
+        # _, _, items = content.split(" ", 2)
+        # unpacked_items = items.split(", ")
+        # for pair in unpacked_items:
+        # qty, item = pair.split(":")
+        tracker.update_player_inventory(guild_id, interaction.user, item, qty)
         await interaction.response.send_message("✅")
 
 
