@@ -1,7 +1,7 @@
 # Discord D&D Gathering Bot
 
 Bot to help you heard your players.
-
+https://discord.com/api/oauth2/authorize?client_id=966865214937112657&permissions=544119192688&scope=applications.commands%20bot
 
 ## Commands
 
