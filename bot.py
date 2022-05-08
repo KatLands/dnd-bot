@@ -1,3 +1,5 @@
+import logging
+import urllib
 from asyncio import TimeoutError
 from datetime import datetime
 from subprocess import check_output
@@ -20,6 +22,7 @@ try:
     bot_prefix = bot_config["discord"]["botPrefix"]
     db_host = bot_config["db"]["host"]
     db_port = int(bot_config["db"]["port"])
+    db_user = bot_config["db"]["user"]
     db_password = bot_config["db"]["password"]
     alert_time = int(bot_config["alerts"]["time"])
 except KeyError:
@@ -30,9 +33,9 @@ except KeyError:
     bot_prefix = environ["botPrefix"]
     db_host = environ["dbHost"]
     db_port = int(environ["dbPort"])
+    db_user = environ["dbUser"]
     db_password = environ["dbPassword"]
     alert_time = int(environ["alertTime"])
-
 
 # Bot init
 intents = Intents.default()
@@ -41,23 +44,27 @@ description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now().replace(microsecond=0)
 
-dbh = MongoClient(host=db_host, port=db_port, password=db_password)
+connect_str = f"mongodb+srv://{urllib.parse.quote(db_user)}:{urllib.parse.quote(db_password)}@{db_host}".strip()
+dbh = MongoClient(connect_str)
+
+# dbh: MongoClient = MongoClient(host=db_host, username=db_user, password=db_password)
 tracker = Tracker(dbh["dnd-bot"])
 
 
 # Events
 @bot.event
 async def on_ready():
-    print(f"[{startTime}] - Logged in as {bot.user.name} - {bot.user.id}")
+    logging.debug(f"[{startTime}] - Logged in as {bot.user.name} - {bot.user.id}")
 
 
 # Commands
 @bot.command()
 async def status(ctx):
     try:
-        dbh.admin.command("ping")
-    except ConnectionFailure:
+        dbh['admin'].command("ping")
+    except ConnectionFailure as ce:
         db_status = "offline"
+        logging.exception(ce)
     else:
         db_status = "online"
     git = check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
@@ -102,7 +109,7 @@ async def ask_for_time(ctx):
         return ctx.author == m.author
 
     try:
-        response = await bot.wait_for("message", timeout=30.0, check=check)
+        response = await bot.wait_for("message", timeout=50.0, check=check)
     except TimeoutError:
         await ctx.message.channel.send("Fail! React faster!")
         to_return = None
@@ -210,14 +217,14 @@ async def list(ctx):
 async def inv(ctx):
     if ctx.invoked_subcommand is None:
         if (
-            len(
-                (
-                    inv := tracker.get_inventory_for_player(
-                        ctx.guild.id, ctx.message.author
+                len(
+                    (
+                            inv := tracker.get_inventory_for_player(
+                                ctx.guild.id, ctx.message.author
+                            )
                     )
                 )
-            )
-            == 0
+                == 0
         ):
             inv_message = "<< Empty >>"
         else:
