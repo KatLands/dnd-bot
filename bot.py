@@ -11,6 +11,7 @@ from pymongo.errors import ConnectionFailure
 from tasks import BotTasks
 from helpers import adjacent_days, plist, Weekdays, Emojis
 from mongo_tracker import Tracker
+from pytz import timezone
 
 try:
     import configparser
@@ -38,11 +39,12 @@ except KeyError:
     alert_time = int(environ["alertTime"])
 
 # Bot init
+tz = timezone('US/Eastern')
 intents = Intents.default()
 intents.members = True
 description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
-startTime = datetime.now().replace(microsecond=0)
+startTime = datetime.now(tz).replace(microsecond=0)
 
 connect_str = f"mongodb+srv://{urllib.parse.quote(db_user)}:{urllib.parse.quote(db_password)}@{db_host}".strip()
 dbh = MongoClient(connect_str)
@@ -68,9 +70,9 @@ async def status(ctx):
     else:
         db_status = "online"
     git = check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
-    now = datetime.now().replace(microsecond=0)
+    now = datetime.now(tz).replace(microsecond=0)
     await ctx.message.channel.send(
-        f"Up for **{now - startTime}** on `{git}`. Database is **{db_status}**."
+        f"Up for **{now - startTime}** on `{git}`. Time is {datetime.now(tz).strftime('%T')} eastern. Database is **{db_status}**."
     )
 
 
@@ -103,7 +105,7 @@ async def config(ctx):
 
 
 async def ask_for_time(ctx):
-    my_message = await ctx.message.channel.send("Configure time (24h HH:MM):")
+    my_message = await ctx.message.channel.send("Configure time ET (24h HH:MM):")
 
     def check(m):
         return ctx.author == m.author
@@ -129,7 +131,7 @@ async def ask_for_day(ctx, ask):
         return user == ctx.author and any(e.value == str(reaction) for e in Emojis)
 
     try:
-        reaction, _ = await bot.wait_for("reaction_add", timeout=10.0, check=check)
+        reaction, _ = await bot.wait_for("reaction_add", timeout=15.0, check=check)
     except TimeoutError:
         await ctx.message.channel.send("Fail! React faster!")
         to_return = None
@@ -377,10 +379,14 @@ bt = BotTasks(bot)
 
 @tasks.loop(hours=1)
 async def alert_dispatcher():
+    logging.debug(f"Checking to see if it is time to remind players")
     await bot.wait_until_ready()
-    if int(datetime.now().strftime("%H")) != alert_time:
+    logging.debug(f"Bot is ready")
+    if int(datetime.now(tz).strftime("%H")) != alert_time:
+        logging.debug(f"It is not yet time to alert")
         return
-    today = datetime.now().weekday()
+    logging.debug(f"It IS time to alert")
+    today = datetime.now(tz).weekday()
     day_before, _ = adjacent_days(today)
     for config in tracker.get_first_alert_configs(today):
         if not tracker.is_full_group(config["guild"]):
