@@ -9,7 +9,7 @@ class BotTasks:
     async def first_alert(self, config) -> None:
         channel: Any = await self.bot.fetch_channel(config["config"]["meeting-room"])
         await channel.send(
-            f"Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            f"@everyone Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
         )
 
     async def second_alert(self, config) -> None:

@@ -12,7 +12,7 @@ from tasks import BotTasks
 from helpers import adjacent_days, plist, Weekdays, Emojis
 from mongo_tracker import Tracker
 from pytz import timezone
-
+logging.basicConfig(level=logging.DEBUG)
 try:
     import configparser
 
@@ -188,6 +188,11 @@ async def cmds(ctx):
 async def reset(ctx):
     tracker.reset(ctx.guild.id)
     await ctx.message.add_reaction("✅")
+
+
+@bot.command()
+async def alert(ctx):
+    await alert_dispatcher(force=True)
 
 
 @bot.command()
@@ -378,24 +383,32 @@ bt = BotTasks(bot)
 
 
 @tasks.loop(hours=1)
-async def alert_dispatcher():
+async def alert_dispatcher(force=False):
     logging.debug(f"Checking to see if it is time to remind players")
     await bot.wait_until_ready()
     logging.debug(f"Bot is ready")
-    if int(datetime.now(tz).strftime("%H")) != alert_time:
+    if int(datetime.now(tz).strftime("%H")) != alert_time and force is False:
         logging.debug(f"It is not yet time to alert")
         return
+
     logging.debug(f"It IS time to alert")
     today = datetime.now(tz).weekday()
     day_before, _ = adjacent_days(today)
+
+    # Check if all players have registered for the upcoming session (on the first day)
     for config in tracker.get_first_alert_configs(today):
         if not tracker.is_full_group(config["guild"]):
             await bt.first_alert(config)
+
+    # Check if all players have registered for the upcoming session (but on the second day)
     for config in tracker.get_second_alert_configs(today):
         if not tracker.is_full_group(config["guild"]):
             await bt.second_alert(config)
+
+    # DM the DM the accept/reject rsvp list
     for config in tracker.get_session_day_configs(today):
         await bt.send_dm(config, tracker)
+    # Reset the rsvp list
     for config in tracker.get_session_day_configs(day_before):
         bt.reset(config, tracker)
 
