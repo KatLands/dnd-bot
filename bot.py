@@ -105,7 +105,7 @@ async def config(ctx):
 
 
 async def ask_for_time(ctx):
-    my_message = await ctx.message.channel.send("Configure time ET (24h HH:MM):")
+    my_message = await ctx.message.channel.send("Configure Session time ET (24h HH:MM):")
 
     def check(m):
         return ctx.author == m.author
