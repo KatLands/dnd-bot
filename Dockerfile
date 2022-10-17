@@ -1,6 +1,6 @@
-FROM python
+FROM python:3.10.5-slim
+RUN pip install pipenv
 COPY . /dnd-bot
 WORKDIR /dnd-bot
-RUN pip3 install -r requirements.txt
-#ENTRYPOINT [ "python3" ]
-CMD [ "python3", "bot.py" ]
+RUN pipenv install --deploy
+CMD [ "pipenv", "run", "python3", "bot.py" ]

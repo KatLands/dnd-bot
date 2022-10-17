@@ -263,6 +263,8 @@ celerybeat.pid
 
 # Environments
 .env
+.envrc
+secrets-set.sh
 .venv
 env/
 venv/
@@ -721,10 +723,15 @@ FodyWeavers.xsd
 
 # Custom
 config.ini
+config-template.ini
 __pycache__/*
 .vscode/*
 *~
 .python-version
-.env
-.envrc
-secrets-set.sh
+docker-compose.yml
+Makefile
+fly.toml
+.idea/
+.flake8/
+.github/
+.git/
