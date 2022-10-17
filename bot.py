@@ -4,14 +4,16 @@ from asyncio import TimeoutError
 from datetime import datetime
 from subprocess import check_output
 
-from discord.ext import commands, tasks
 from discord import Embed, Intents
+from discord.ext import commands, tasks
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from tasks import BotTasks
+from pytz import timezone
+
 from helpers import adjacent_days, plist, Weekdays, Emojis
 from mongo_tracker import Tracker
-from pytz import timezone
+from tasks import BotTasks
+
 logging.basicConfig(level=logging.DEBUG)
 try:
     import configparser
@@ -40,7 +42,7 @@ except KeyError:
 
 # Bot init
 tz = timezone('US/Eastern')
-intents = Intents.default()
+intents = Intents.all()
 intents.members = True
 description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
@@ -49,7 +51,6 @@ startTime = datetime.now(tz).replace(microsecond=0)
 connect_str = f"mongodb+srv://{urllib.parse.quote(db_user)}:{urllib.parse.quote(db_password)}@{db_host}".strip()
 dbh = MongoClient(connect_str)
 
-# dbh: MongoClient = MongoClient(host=db_host, username=db_user, password=db_password)
 tracker = Tracker(dbh["dnd-bot"])
 
 
@@ -57,6 +58,8 @@ tracker = Tracker(dbh["dnd-bot"])
 @bot.event
 async def on_ready():
     logging.debug(f"[{startTime}] - Logged in as {bot.user.name} - {bot.user.id}")
+
+    await alert_dispatcher.start()
 
 
 # Commands
@@ -384,9 +387,11 @@ bt = BotTasks(bot)
 
 @tasks.loop(hours=1)
 async def alert_dispatcher(force=False):
-    logging.debug(f"Checking to see if it is time to remind players")
-    await bot.wait_until_ready()
-    logging.debug(f"Bot is ready")
+    logging.info(f"Checking to see if it is time to remind players")
+    logging.debug(f"Logging into Discord")
+    await bot.login(token)
+
+    # See if its time to send message asking if players are available
     if int(datetime.now(tz).strftime("%H")) != alert_time and force is False:
         logging.debug(f"It is not yet time to alert")
         return
@@ -408,11 +413,13 @@ async def alert_dispatcher(force=False):
     # DM the DM the accept/reject rsvp list
     for config in tracker.get_session_day_configs(today):
         await bt.send_dm(config, tracker)
-    # Reset the rsvp list
+    # Reset rsvp list
     for config in tracker.get_session_day_configs(day_before):
         bt.reset(config, tracker)
 
 
 if __name__ == "__main__":
-    alert_dispatcher.start()
-    bot.run(token)
+    try:
+        bot.run(token)
+    finally:
+        logging.debug("Ending bot")

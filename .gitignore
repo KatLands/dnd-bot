@@ -728,3 +728,5 @@ __pycache__/*
 .env
 .envrc
 secrets-set.sh
+
+.idea/
