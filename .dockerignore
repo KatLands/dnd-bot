@@ -733,5 +733,3 @@ Makefile
 fly.toml
 .idea/
 .flake8/
-.github/
-.git/
