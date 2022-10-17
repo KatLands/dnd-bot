@@ -23,7 +23,7 @@ push-image:
 	docker push dragid10/dnd-bot
 
 deploy:
-	flyctl deploy --detach
+	 flyctl deploy --detach --push --now --no-cache
 
 deploy-status:
 	flyctl status

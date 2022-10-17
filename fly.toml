@@ -1,12 +1,16 @@
 # fly.toml file generated for dnd-bot on 2022-10-15T16:24:48-04:00
 
 app = "dnd-bot"
-kill_signal = "SIGINT"
-kill_timeout = 5
-processes = []
+kill_signal = "SIGTERM"
+kill_timeout = 3
 
 [build]
   image = "dragid10/dnd-bot:latest"
 
 [experimental]
   auto_rollback = true
+
+[deploy]
+  strategy = "immediate"
+
+[services]

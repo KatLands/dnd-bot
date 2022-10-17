@@ -729,7 +729,5 @@ __pycache__/*
 *~
 .python-version
 docker-compose.yml
-Makefile
-fly.toml
 .idea/
 .flake8/
