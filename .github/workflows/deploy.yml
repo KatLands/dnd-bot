@@ -16,7 +16,7 @@ jobs:
           repository: dragid10/dnd-bot.git
           ref: main
 
-       - name: Check .git directory
+      - name: Check .git directory
         run: |
           ls -hal
 
