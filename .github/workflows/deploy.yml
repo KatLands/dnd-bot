@@ -31,6 +31,12 @@ jobs:
     name: Deploy dnd-bot
     runs-on: ubuntu-22.04
     steps:
+      # This step checks out a copy of your repository.
+      - name: Checkout project from git
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --detach --push --now
         env:
