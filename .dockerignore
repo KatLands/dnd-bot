@@ -729,5 +729,6 @@ __pycache__/*
 *~
 .python-version
 docker-compose.yml
-.idea/
-.flake8/
+.idea/*
+.flake8/*
+.github/*
