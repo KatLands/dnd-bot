@@ -1,3 +1,4 @@
+[![Prod Deploy](https://github.com/dragid10/dnd-bot/actions/workflows/deploy.yml/badge.svg)](https://github.com/dragid10/dnd-bot/actions/workflows/deploy.yml)
 # Discord D&D Gathering Bot
 
 Bot to help you heard your players.
@@ -12,7 +13,7 @@ All commands must be prefixed (e.g. `!ping`). The prefix is determined by the [s
 - `commands`: Lists all available commands.
 - `reset`: Resets the RSVP and voting lists.
 - `rsvp [accept|decline]`: `accept` or `decline` the invitation to the session.
-- `vote [dream|cancel]`: Cast your vote for either `dreaming` or `cancelling`
+- `vote [cancel]`: Cast your vote for `cancelling`
   the session when you do not have a full group of players.
 - `skip`: "Skips" the current week; disables alerting.
 - `list`: Displays the RSVP and voting lists.
