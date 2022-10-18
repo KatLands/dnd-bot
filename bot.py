@@ -1,5 +1,5 @@
 import logging
-import urllib
+import urllib.parse
 from asyncio import TimeoutError
 from datetime import datetime
 from subprocess import check_output
@@ -15,6 +15,8 @@ from mongo_tracker import Tracker
 from tasks import BotTasks
 
 logging.basicConfig(level=logging.DEBUG)
+
+# Load in configs
 try:
     import configparser
 
@@ -44,14 +46,16 @@ except KeyError:
 tz = timezone('US/Eastern')
 intents = Intents.all()
 intents.members = True
+intents.message_content = True
 description = """A bot to assist with hearding players for D&D sessions."""
 bot = commands.Bot(command_prefix=bot_prefix, description=description, intents=intents)
 startTime = datetime.now(tz).replace(microsecond=0)
 
+# Connect o mongo and create a client
 connect_str = f"mongodb+srv://{urllib.parse.quote(db_user)}:{urllib.parse.quote(db_password)}@{db_host}".strip()
-dbh = MongoClient(connect_str)
+mongo_client = MongoClient(connect_str)
 
-tracker = Tracker(dbh["dnd-bot"])
+tracker = Tracker(mongo_client["dnd-bot"])
 
 
 # Events
@@ -66,12 +70,15 @@ async def on_ready():
 @bot.command()
 async def status(ctx):
     try:
-        dbh['admin'].command("ping")
+        # Try a quick ping to make sure things can connect
+        mongo_client['admin'].command("ping")
     except ConnectionFailure as ce:
         db_status = "offline"
         logging.exception(ce)
     else:
         db_status = "online"
+
+    # Get git commit hash, so we know what version of the bot we're running
     git = check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
     now = datetime.now(tz).replace(microsecond=0)
     await ctx.message.channel.send(
@@ -81,7 +88,14 @@ async def status(ctx):
 
 @bot.command()
 async def config(ctx):
-    questions = ["session day", "first alert", "second alert"]
+    """
+    Starts the config of the bot. Goes through asking the session day, when to send the first alert,
+    and when to send the second alert..
+    :param ctx: Context of the discord bot
+    :return:
+    """
+    questions = ["What day is the session typically had?", "When would you like to send the first alert?",
+                 "When would you like to send the second alert?"]
     answers = [await ask_for_day(ctx, q) for q in questions]
 
     def map_emoji_to_day_value(emoji):
@@ -114,7 +128,7 @@ async def ask_for_time(ctx):
         return ctx.author == m.author
 
     try:
-        response = await bot.wait_for("message", timeout=50.0, check=check)
+        response = await bot.wait_for("message", timeout=60.0, check=check)
     except TimeoutError:
         await ctx.message.channel.send("Fail! React faster!")
         to_return = None
@@ -134,7 +148,7 @@ async def ask_for_day(ctx, ask):
         return user == ctx.author and any(e.value == str(reaction) for e in Emojis)
 
     try:
-        reaction, _ = await bot.wait_for("reaction_add", timeout=15.0, check=check)
+        reaction, _ = await bot.wait_for("reaction_add", timeout=20.0, check=check)
     except TimeoutError:
         await ctx.message.channel.send("Fail! React faster!")
         to_return = None
@@ -214,71 +228,11 @@ async def list(ctx):
                 "fields": [
                     {"name": "Accepted", "value": plist(accept)},
                     {"name": "Declined", "value": plist(decline)},
-                    {"name": "Dreamers", "value": plist(dream)},
                     {"name": "Cancelled", "value": plist(cancel)},
                 ],
             }
         )
     )
-
-
-# Support inv [add|remove]
-@bot.group()
-async def inv(ctx):
-    if ctx.invoked_subcommand is None:
-        if (
-                len(
-                    (
-                            inv := tracker.get_inventory_for_player(
-                                ctx.guild.id, ctx.message.author
-                            )
-                    )
-                )
-                == 0
-        ):
-            inv_message = "<< Empty >>"
-        else:
-            inv_message = "\n".join([f"{i['qty']}:{i['item']}" for i in inv])
-
-        await ctx.message.channel.send(
-            embed=Embed().from_dict(
-                {
-                    "fields": [
-                        {
-                            "name": f"__*{ctx.message.author.name}'s Inventory:*__",
-                            "value": inv_message,
-                        }
-                    ]
-                }
-            )
-        )
-
-
-@inv.command(name="add")
-async def add(ctx):
-    _, _, items = ctx.message.content.split(" ", 2)
-    unpacked_items = items.split(", ")
-    for pair in unpacked_items:
-        qty, item = pair.split(":")
-        tracker.add_to_player_inventory(ctx.guild.id, ctx.author, item, qty)
-    await ctx.message.add_reaction("✅")
-
-
-@inv.command(name="remove")
-async def remove(ctx):
-    _, _, item = ctx.message.content.split(" ", 2)
-    tracker.rm_from_player_inventory(ctx.guild.id, ctx.author, item)
-    await ctx.message.add_reaction("✅")
-
-
-@inv.command(name="update")
-async def update(ctx):
-    _, _, items = ctx.message.content.split(" ", 2)
-    unpacked_items = items.split(", ")
-    for pair in unpacked_items:
-        qty, item = pair.split(":")
-        tracker.update_player_inventory(ctx.guild.id, ctx.author, item, qty)
-    await ctx.message.add_reaction("✅")
 
 
 # Support rsvp [accept|decline]
@@ -331,34 +285,13 @@ async def _decline(ctx):
     tracker.rm_attendee_for_guild(ctx.guild.id, ctx.author)
 
 
-# Support vote [dream|cancel]
+# Support vote [cancel]
 @bot.group()
 async def vote(ctx):
     if ctx.invoked_subcommand is None:
         await ctx.message.channel.send(
-            f"Please `{bot_prefix}vote dream` or `{bot_prefix}vote cancel`"
+            f"Please `{bot_prefix}vote cancel`"
         )
-
-
-@vote.command(name="dream")
-async def _dream(ctx):
-    tracker.add_dreamer_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Dreaming",
-                        "value": "You've been added to the dreaming list!",
-                    },
-                    {
-                        "name": "Other dreamers",
-                        "value": plist(tracker.get_dreamers_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
-        )
-    )
 
 
 @vote.command(name="cancel")
@@ -403,14 +336,17 @@ async def alert_dispatcher(force=False):
     # Check if all players have registered for the upcoming session (on the first day)
     for config in tracker.get_first_alert_configs(today):
         if not tracker.is_full_group(config["guild"]):
-            await bt.first_alert(config)
+            logging.debug("Group is not full")
+            unanswered = tracker.get_unanswered_players(guild_id=config["guild"])
+            await bt.first_alert(config, unanswered)
 
     # Check if all players have registered for the upcoming session (but on the second day)
     for config in tracker.get_second_alert_configs(today):
         if not tracker.is_full_group(config["guild"]):
-            await bt.second_alert(config)
+            unanswered = tracker.get_unanswered_players(guild_id=config["guild"])
+            await bt.second_alert(config, unanswered)
 
-    # DM the DM the accept/reject rsvp list
+    # DM the GM the accept/reject rsvp list
     for config in tracker.get_session_day_configs(today):
         await bt.send_dm(config, tracker)
     # Reset rsvp list

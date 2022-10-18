@@ -5,7 +5,7 @@ kill_signal = "SIGTERM"
 kill_timeout = 3
 
 [build]
-  image = "dragid10/dnd-bot:latest"
+  image = "dragid10/dnd-bot"
 
 [experimental]
   auto_rollback = true

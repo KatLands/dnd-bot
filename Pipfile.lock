@@ -295,7 +295,9 @@
             "version": "==6.0.2"
         },
         "pymongo": {
-            "extras": [],
+            "extras": [
+                "srv"
+            ],
             "hashes": [
                 "sha256:01721da74558f2f64a9f162ee063df403ed656b7d84229268d8e4ae99cfba59c",
                 "sha256:07564178ecc203a84f63e72972691af6c0c82d2dc0c9da66ba711695276089ba",

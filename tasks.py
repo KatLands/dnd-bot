@@ -1,21 +1,27 @@
-from helpers import plist
 from typing import Any
+
+import helpers
+from helpers import plist
 
 
 class BotTasks:
     def __init__(self, bot):
         self.bot = bot
 
-    async def first_alert(self, config) -> None:
+    async def first_alert(self, config, unanswered) -> None:
         channel: Any = await self.bot.fetch_channel(config["config"]["meeting-room"])
+        at_ids = list(map(helpers.callable_username, unanswered))
+
         await channel.send(
-            f"@everyone Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            f"{', '.join(at_ids)} Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
         )
 
-    async def second_alert(self, config) -> None:
+    async def second_alert(self, config, unanswered) -> None:
         channel: Any = await self.bot.fetch_channel(config["config"]["meeting-room"])
+        at_ids = list(map(helpers.callable_username, unanswered))
+
         await channel.send(
-            f"Please RSVP: `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            f"Please RSVP: {','.join(at_ids)} `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
         )
 
     async def session_alert(self, config) -> None:

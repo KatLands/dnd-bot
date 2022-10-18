@@ -1,5 +1,5 @@
-from typing import List, Tuple
 from enum import Enum, unique
+from typing import List, Tuple
 
 
 @unique
@@ -49,3 +49,7 @@ def adjacent_days(dotw: int) -> Tuple[int, int]:
     before = days[(dotw - 1) % len(days)]
     after = days[(dotw + 1) % len(days)]
     return (int(before), int(after))
+
+
+def callable_username(username: str):
+    return f"<@{username}>".strip()
