@@ -3,5 +3,4 @@ RUN pip install pipenv
 COPY . /dnd-bot
 WORKDIR /dnd-bot
 RUN pipenv install --deploy
-ENTRYPOINT /bin/bash
-#CMD [ "pipenv", "run", "python3", "bot.py" ]
+CMD [ "pipenv", "run", "python3", "bot.py" ]
