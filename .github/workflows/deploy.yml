@@ -16,14 +16,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Force Install GIT latest
-        run: |
-          sudo apt-get install -y software-properties-common \
-          && sudo apt-get update -y \
-          && sudo add-apt-repository -y ppa:git-core/ppa \
-          && sudo apt-get update -y \
-          && sudo apt-get install -y git
-
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
