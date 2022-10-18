@@ -35,7 +35,7 @@ jobs:
     steps:
       # This step checks out a copy of your repository.
       - name: Checkout project from git
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - uses: superfly/flyctl-actions/setup-flyctl@master
