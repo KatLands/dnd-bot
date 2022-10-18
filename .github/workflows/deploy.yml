@@ -21,7 +21,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: dragid10/dnd-bot:latest
+          tags:
+            - dragid10/dnd-bot:latest
+            - dragid10/dnd-bot:production
   deploy:
     name: Deploy dnd-bot
     runs-on: ubuntu-latest
