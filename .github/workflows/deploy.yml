@@ -7,6 +7,16 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
+
+      - name: Setup OS
+        run: |
+          sudo apt-get update -y
+          sudo apt-get upgrade -y
+
+      - name: Setup Git
+        run: |
+          sudo apt-get install -y git
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
