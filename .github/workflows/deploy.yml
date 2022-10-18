@@ -35,6 +35,9 @@ jobs:
       # This step checks out a copy of your repository.
       - name: Checkout project from git
         uses: actions/checkout@v3
+        with:
+          repository: dragid10/dnd-bot.git
+          ref: main
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --detach --push --now
