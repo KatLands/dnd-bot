@@ -373,4 +373,4 @@ config-template.ini
 docker-compose.yml
 .flake8
 .idea/*
-.github/*
+!.git
