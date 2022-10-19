@@ -1,12 +1,10 @@
 FROM python:3.10.5
+WORKDIR /dnd-bot
 RUN pip install pipenv
-RUN pwd
-RUN ls -halman
+RUN ls -hal
 ADD . /dnd-bot
-#ADD ./.git /dnd-bot
-RUN pwd
+ADD .git/ ./.git/
 RUN ls -hal /
 RUN ls -hal /dnd-bot
-WORKDIR /dnd-bot
 RUN pipenv install --deploy
 CMD [ "pipenv", "run", "python3", "bot.py" ]
