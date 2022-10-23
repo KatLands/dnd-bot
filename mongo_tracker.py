@@ -247,6 +247,10 @@ class Tracker:
         # check if attendees contains all elements of players
         return all(elem in attendees for elem in players)
 
+    def is_registered_player(self, guild_id: int, player):
+        players = self.get_players_for_guild(guild_id)
+        return self._get_user(player) in players
+
     def get_unanswered_players(self, guild_id: int):
         players = {player["id"]: player["name"] for player in self.get_players_for_guild(guild_id)}
         attendees = {att["id"]: att["name"] for att in self.get_attendees_for_guild(guild_id)}

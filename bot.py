@@ -239,50 +239,56 @@ async def list(ctx):
 @bot.group()
 async def rsvp(ctx):
     if ctx.invoked_subcommand is None:
-        await ctx.message.channel.send(
+        await ctx.message.reply(
             f"Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`."
         )
 
 
 @rsvp.command(name="accept")
 async def _accept(ctx):
-    tracker.add_attendee_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {
-                        "name": "Accepted",
-                        "value": "Thanks for confirming!",
-                    },
-                    {
-                        "name": "Attendees",
-                        "value": plist(tracker.get_attendees_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
+    if not tracker.is_registered_player(ctx.guild.id, ctx.author):
+        await ctx.message.reply(f"You are not a registered player in this campaign, so you can not rsvp")
+    else:
+        tracker.add_attendee_for_guild(ctx.guild.id, ctx.author)
+        await ctx.message.reply(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {
+                            "name": "Accepted",
+                            "value": "Thanks for confirming!",
+                        },
+                        {
+                            "name": "Attendees",
+                            "value": plist(tracker.get_attendees_for_guild(ctx.guild.id)),
+                        },
+                    ]
+                }
+            )
         )
-    )
-    tracker.rm_decliner_for_guild(ctx.guild.id, ctx.author)
+        tracker.rm_decliner_for_guild(ctx.guild.id, ctx.author)
 
 
 @rsvp.command(name="decline")
 async def _decline(ctx):
-    tracker.add_decliner_for_guild(ctx.guild.id, ctx.author)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "fields": [
-                    {"name": "Declined", "value": "No problem, see you next time!"},
-                    {
-                        "name": "Those that have declined",
-                        "value": plist(tracker.get_decliners_for_guild(ctx.guild.id)),
-                    },
-                ]
-            }
+    if not tracker.is_registered_player(ctx.guild.id, ctx.author):
+        await ctx.message.reply(f"You are not a registered player in this campaign so you can not rsvp")
+    else:
+        tracker.add_decliner_for_guild(ctx.guild.id, ctx.author)
+        await ctx.message.reply(
+            embed=Embed().from_dict(
+                {
+                    "fields": [
+                        {"name": "Declined", "value": "No problem, see you next time!"},
+                        {
+                            "name": "Those that have declined",
+                            "value": plist(tracker.get_decliners_for_guild(ctx.guild.id)),
+                        },
+                    ]
+                }
+            )
         )
-    )
-    tracker.rm_attendee_for_guild(ctx.guild.id, ctx.author)
+        tracker.rm_attendee_for_guild(ctx.guild.id, ctx.author)
 
 
 # Support vote [cancel]
