@@ -13,4 +13,11 @@ kill_timeout = 3
 [deploy]
   strategy = "immediate"
 
+[env]
+  LOG_LEVEL = "debug"
+  alertTime = "12"
+  campaignName = "Journey to the Center of the Earth Kingdom"
+  campaignAlias = "JTCEK"
+  discordVC = "Party"
+
 [services]

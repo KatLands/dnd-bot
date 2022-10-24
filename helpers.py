@@ -1,5 +1,10 @@
+from datetime import datetime, timedelta
 from enum import Enum, unique
 from typing import List, Tuple
+
+from pytz import timezone
+
+est_tz = timezone("America/New_York")
 
 
 @unique
@@ -48,7 +53,25 @@ def adjacent_days(dotw: int) -> Tuple[int, int]:
     days = [i for i in range(len(Weekdays))]
     before = days[(dotw - 1) % len(days)]
     after = days[(dotw + 1) % len(days)]
-    return (int(before), int(after))
+    return int(before), int(after)
+
+
+def get_next_session_day(session_day, session_time) -> datetime:
+    # Get current DT and localize it to EST
+    est_dt = est_tz.localize(datetime.utcnow())
+
+    # Figure out next session date with time deltas
+    for i in range(1, 8):
+        ret_sess_day = datetime.utcnow()
+        potential_day: datetime = est_tz.normalize(est_dt + timedelta(days=i))
+        potential_day_dotw = potential_day.weekday()
+
+        if potential_day_dotw == session_day:
+            ret_sess_day = potential_day.replace(
+                hour=int(session_time.split(":")[0]),
+                minute=int(session_time.split(":")[1]),
+            )
+        return ret_sess_day
 
 
 def callable_username(username: str):

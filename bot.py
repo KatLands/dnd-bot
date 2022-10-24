@@ -4,12 +4,15 @@ from asyncio import TimeoutError
 from datetime import datetime
 from subprocess import check_output
 
-from discord import Embed, Intents
+import discord
+from discord import Embed, Intents, app_commands, ScheduledEvent
 from discord.ext import commands, tasks
+from discord.ext.commands import Context
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from pytz import timezone
 
+import helpers
 from helpers import adjacent_days, plist, Weekdays, Emojis
 from mongo_tracker import Tracker
 from tasks import BotTasks
@@ -30,17 +33,25 @@ try:
     db_user = bot_config["db"]["user"]
     db_password = bot_config["db"]["password"]
     alert_time = int(bot_config["alerts"]["time"])
+    campaign_name = bot_config["campaign"]["name"] or "D&D"
+    campaign_alias = bot_config["campaign"]["alias"] or campaign_name
+    discord_vc = bot_config["discord"]["vc"]
+
 except KeyError:
     # Fall back to environment variables
     from os import environ
+    from decouple import config
 
-    token = environ["token"]
-    bot_prefix = environ["botPrefix"]
-    db_host = environ["dbHost"]
-    db_port = int(environ["dbPort"])
-    db_user = environ["dbUser"]
-    db_password = environ["dbPassword"]
-    alert_time = int(environ["alertTime"])
+    token = config("token")
+    bot_prefix = config("botPrefix", default="!")
+    db_host = config("dbHost")
+    db_port = config("dbPort", cast=int)
+    db_user = config("dbUser")
+    db_password = config("dbPassword")
+    alert_time = config("alertTime", default="12", cast=int)
+    campaign_name = config("campaignName", default="D&D")
+    campaign_alias = config("campaignAlias", default=campaign_name)
+    discord_vc = config("discordVC")
 
 # Bot init
 tz = timezone('US/Eastern')
@@ -68,7 +79,7 @@ async def on_ready():
 
 # Commands
 @bot.command()
-async def status(ctx):
+async def status(ctx: Context):
     try:
         # Try a quick ping to make sure things can connect
         mongo_client['admin'].command("ping")
@@ -87,7 +98,7 @@ async def status(ctx):
 
 
 @bot.command()
-async def config(ctx):
+async def config(ctx: Context):
     """
     Starts the config of the bot. Goes through asking the session day, when to send the first alert,
     and when to send the second alert..
@@ -121,7 +132,7 @@ async def config(ctx):
     await ctx.message.channel.send("Config saved!")
 
 
-async def ask_for_time(ctx):
+async def ask_for_time(ctx: Context):
     my_message = await ctx.message.channel.send("Configure Session time ET (24h HH:MM):")
 
     def check(m):
@@ -160,19 +171,19 @@ async def ask_for_day(ctx, ask):
 
 
 @bot.command()
-async def unconfig(ctx):
+async def unconfig(ctx: Context):
     tracker.rm_guild_config(ctx.guild.id)
     await ctx.message.add_reaction("👋")
 
 
 @bot.command()
-async def register(ctx):
+async def register(ctx: Context):
     tracker.register_player(ctx.guild.id, ctx.author)
     await ctx.message.add_reaction("✅")
 
 
 @bot.command()
-async def players(ctx):
+async def players(ctx: Context):
     players = tracker.get_players_for_guild(ctx.guild.id)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -188,7 +199,7 @@ async def players(ctx):
 
 
 @bot.command()
-async def cmds(ctx):
+async def cmds(ctx: Context):
     await ctx.message.channel.send(
         embed=Embed().from_dict(
             {
@@ -202,24 +213,24 @@ async def cmds(ctx):
 
 
 @bot.command()
-async def reset(ctx):
+async def reset(ctx: Context):
     tracker.reset(ctx.guild.id)
     await ctx.message.add_reaction("✅")
 
 
 @bot.command()
-async def alert(ctx):
+async def alert(ctx: Context):
     await alert_dispatcher(force=True)
 
 
 @bot.command()
-async def skip(ctx):
+async def skip(ctx: Context):
     tracker.skip(ctx.guild.id)
     await ctx.message.channel.send("Skipping this week!")
 
 
 @bot.command()
-async def list(ctx):
+async def list(ctx: Context):
     accept, decline, dream, cancel = tracker.get_all(ctx.guild.id)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -237,7 +248,7 @@ async def list(ctx):
 
 # Support rsvp [accept|decline]
 @bot.group()
-async def rsvp(ctx):
+async def rsvp(ctx: Context):
     if ctx.invoked_subcommand is None:
         await ctx.message.reply(
             f"Please use either `{bot_prefix}rsvp accept` or `{bot_prefix}rsvp decline`."
@@ -245,7 +256,7 @@ async def rsvp(ctx):
 
 
 @rsvp.command(name="accept")
-async def _accept(ctx):
+async def _accept(ctx: Context):
     if not tracker.is_registered_player(ctx.guild.id, ctx.author):
         await ctx.message.reply(f"You are not a registered player in this campaign, so you can not rsvp")
     else:
@@ -268,9 +279,14 @@ async def _accept(ctx):
         )
         tracker.rm_decliner_for_guild(ctx.guild.id, ctx.author)
 
+    if tracker.is_full_group(ctx.guild.id):
+        sess_event = await _create_session_event(ctx)
+        await ctx.message.channel.send(
+            f"All players have confirmed attendance, so I've automatically created an event: {sess_event.url}")
+
 
 @rsvp.command(name="decline")
-async def _decline(ctx):
+async def _decline(ctx: Context):
     if not tracker.is_registered_player(ctx.guild.id, ctx.author):
         await ctx.message.reply(f"You are not a registered player in this campaign so you can not rsvp")
     else:
@@ -293,7 +309,7 @@ async def _decline(ctx):
 
 # Support vote [cancel]
 @bot.group()
-async def vote(ctx):
+async def vote(ctx: Context):
     if ctx.invoked_subcommand is None:
         await ctx.message.channel.send(
             f"Please `{bot_prefix}vote cancel`"
@@ -301,7 +317,7 @@ async def vote(ctx):
 
 
 @vote.command(name="cancel")
-async def _cancel(ctx):
+async def _cancel(ctx: Context):
     tracker.add_canceller_for_guild(ctx.guild.id, ctx.author)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -318,6 +334,21 @@ async def _cancel(ctx):
                 ]
             }
         )
+    )
+
+
+@app_commands.checks.bot_has_permissions(manage_events=True)
+async def _create_session_event(ctx: Context) -> ScheduledEvent:
+    session_vc = discord.utils.get(ctx.guild.channels, name=discord_vc)
+
+    # Get details about session in orde to create a discord event
+    sess_day, sess_time = tracker.get_campaign_session_dt(ctx.guild.id)
+    next_sess = helpers.get_next_session_day(sess_day, sess_time)
+    return await ctx.guild.create_scheduled_event(
+        name=f"{campaign_alias} Session!",
+        description=f"Regular {campaign_alias} session",
+        start_time=next_sess,
+        channel=session_vc,
     )
 
 

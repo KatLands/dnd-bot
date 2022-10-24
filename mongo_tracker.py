@@ -226,6 +226,11 @@ class Tracker:
             {"config.session-day": day_of_the_week, "config.alerts": True}
         )
 
+    def get_campaign_session_dt(self, guild_id: int) -> tuple[str, str]:
+        res = self.config.find_one({"guild": guild_id})
+        sess_config = res["config"]
+        return sess_config["session-day"], sess_config["session-time"]
+
     def register_player(self, guild_id: int, player):
         return self.players.update_one(
             {"guild": guild_id},
