@@ -5,7 +5,7 @@ kill_signal = "SIGTERM"
 kill_timeout = 3
 
 [build]
-  image = "dragid10/dnd-bot"
+  image = "docker.io/dragid10/dnd-bot:latest"
 
 [experimental]
   auto_rollback = true
