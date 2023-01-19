@@ -58,12 +58,12 @@ def adjacent_days(dotw: int) -> Tuple[int, int]:
 
 def get_next_session_day(session_day, session_time) -> datetime:
     # Get current DT and localize it to EST
-    est_dt = est_tz.localize(datetime.utcnow())
+    est_dt = datetime.utcnow().astimezone(est_tz)
 
     # Figure out next session date with time deltas
     for i in range(1, 8):
-        ret_sess_day = datetime.utcnow()
-        potential_day: datetime = est_tz.normalize(est_dt + timedelta(days=i))
+        ret_sess_day = datetime.utcnow().astimezone(est_tz)
+        potential_day: datetime = est_dt + timedelta(days=i)
         potential_day_dotw = potential_day.weekday()
 
         if potential_day_dotw == session_day:

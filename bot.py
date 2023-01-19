@@ -105,9 +105,12 @@ async def config(ctx: Context):
     :param ctx: Context of the discord bot
     :return:
     """
-    questions = ["What day is the session typically had?", "When would you like to send the first alert?",
-                 "When would you like to send the second alert?"]
+    questions: list[tuple] = [("session-day", "What day is the session typically had?"),
+                              ("first-alert", "When would you like to send the first alert?"),
+                              ("second-alert", "When would you like to send the second alert?")]
     answers = [await ask_for_day(ctx, q) for q in questions]
+    session_vc_id = discord.utils.get(ctx.guild.voice_channels, name=discord_vc)
+    session_vc_id = session_vc_id.id
 
     def map_emoji_to_day_value(emoji):
         for e in Emojis:
@@ -116,12 +119,13 @@ async def config(ctx: Context):
 
     mapped_answers = [map_emoji_to_day_value(a) for a in answers]
     config = {
-        questions[i].replace(" ", "-", 1): mapped_answers[i]
+        questions[i][0]: mapped_answers[i]
         for i in range(len(mapped_answers))
     }
     config["session-time"] = await ask_for_time(ctx)
     tracker.create_guild_config(
         guild_id=ctx.guild.id,
+        vc_id=session_vc_id,
         dm_user=ctx.author,
         session_day=config["session-day"],
         session_time=config["session-time"],
@@ -150,8 +154,8 @@ async def ask_for_time(ctx: Context):
         return to_return
 
 
-async def ask_for_day(ctx, ask):
-    my_message = await ctx.message.channel.send(f"Configure: {ask}")
+async def ask_for_day(ctx, ask: tuple):
+    my_message = await ctx.message.channel.send(f"Configure: {ask[1]}")
     for emoji in Emojis:
         await my_message.add_reaction(emoji.value)
 
@@ -339,16 +343,19 @@ async def _cancel(ctx: Context):
 
 @app_commands.checks.bot_has_permissions(manage_events=True)
 async def _create_session_event(ctx: Context) -> ScheduledEvent:
-    session_vc = discord.utils.get(ctx.guild.channels, name=discord_vc)
-
+    server_id = ctx.guild.id
+    session_vc_id = tracker.get_voice_channel_id(server_id)
+    session_vc = bot.get_channel(session_vc_id)
     # Get details about session in orde to create a discord event
-    sess_day, sess_time = tracker.get_campaign_session_dt(ctx.guild.id)
+    sess_day, sess_time = tracker.get_campaign_session_dt(server_id)
     next_sess = helpers.get_next_session_day(sess_day, sess_time)
     return await ctx.guild.create_scheduled_event(
         name=f"{campaign_alias} Session!",
         description=f"Regular {campaign_alias} session",
         start_time=next_sess,
         channel=session_vc,
+        entity_type=discord.EntityType.voice,
+        reason="D&D Session"
     )
 
 
@@ -361,7 +368,7 @@ async def alert_dispatcher(force=False):
     logging.debug(f"Logging into Discord")
     await bot.login(token)
 
-    # See if its time to send message asking if players are available
+    # See if it's time to send message asking if players are available
     if int(datetime.now(tz).strftime("%H")) != alert_time and force is False:
         logging.debug(f"It is not yet time to alert")
         return

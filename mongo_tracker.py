@@ -1,3 +1,5 @@
+from discord import Member
+
 from helpers import Collections
 
 
@@ -180,13 +182,14 @@ class Tracker:
 
     def create_guild_config(
             self,
-            guild_id,
-            dm_user,
-            session_day,
-            session_time,
-            meeting_room,
-            first_alert,
-            second_alert,
+            guild_id: int,
+            vc_id: int,
+            dm_user: Member,
+            session_day: str,
+            session_time: str,
+            meeting_room: int,
+            first_alert: str,
+            second_alert: str,
     ):
         return self.config.update_one(
             {"guild": guild_id},
@@ -195,6 +198,7 @@ class Tracker:
                     "guild": guild_id,
                     "config": {
                         "session-dm": self._get_user(dm_user),
+                        "vc-id": vc_id,
                         "session-day": session_day,
                         "session-time": str(session_time),
                         "meeting-room": meeting_room,
@@ -225,6 +229,11 @@ class Tracker:
         return self.config.find(
             {"config.session-day": day_of_the_week, "config.alerts": True}
         )
+
+    def get_voice_channel_id(self, guild_id: int) -> int:
+        res = self.config.find_one({"guild": guild_id})
+        sess_config = res["config"]
+        return int(sess_config["vc-id"])
 
     def get_campaign_session_dt(self, guild_id: int) -> tuple[str, str]:
         res = self.config.find_one({"guild": guild_id})
