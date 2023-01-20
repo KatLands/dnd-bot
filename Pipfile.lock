@@ -1,11 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a4b2c1a7cf9c124ea11d59fb0056fbb5708681fafc5bb926cb0e76cbc83ca48c"
+            "sha256": "ab4980d85e4a94bc360f578b8b24ae0eeee0cc296e738a5d9cbfac4ed19103ce"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.10"
+            "python_version": "3.11"
         },
         "sources": [
             {
@@ -151,11 +151,11 @@
         },
         "dnspython": {
             "hashes": [
-                "sha256:36565511acce19ee18048b9ea0d25b76d2a2a56e8b5dfaf2ec52deb616f307b4",
-                "sha256:4f5226f7378abd4e01181df1e5daa536af9dfdca72cc41f117847e5583d2fed6"
+                "sha256:224e32b03eb46be70e12ef6d64e0be123a64e621ab4c0822ff6d450d52a540b9",
+                "sha256:89141536394f909066cabd112e3e1a37e4e654db00a25308b0f130bc3152eb46"
             ],
             "markers": "python_version >= '3.7' and python_version < '4.0'",
-            "version": "==2.3.0rc1"
+            "version": "==2.3.0"
         },
         "frozenlist": {
             "hashes": [
@@ -418,11 +418,11 @@
         },
         "pytz": {
             "hashes": [
-                "sha256:7ccfae7b4b2c067464a6733c6261673fdb8fd1be905460396b97a073e9fa683a",
-                "sha256:93007def75ae22f7cd991c84e02d434876818661f8df9ad5df9e950ff4e52cfd"
+                "sha256:01a0681c4b9684a28304615eba55d1ab31ae00bf68ec157ec3708a8182dbbcd0",
+                "sha256:78f4f37d8198e0627c5f1143240bb0206b8691d8d7ac6d78fee88b78733f8c4a"
             ],
             "index": "pypi",
-            "version": "==2022.7"
+            "version": "==2022.7.1"
         },
         "yarl": {
             "hashes": [

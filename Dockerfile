@@ -1,4 +1,4 @@
-FROM python:3.10.5
+FROM python:3.11-slim
 RUN pip install pipenv
 COPY . /dnd-bot
 WORKDIR /dnd-bot
