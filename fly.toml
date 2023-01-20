@@ -5,19 +5,19 @@ kill_signal = "SIGTERM"
 kill_timeout = 3
 
 [build]
-  image = "docker.io/dragid10/dnd-bot:latest"
+image = "registry.fly.io/dnd-bot:latest"
 
 [experimental]
-  auto_rollback = true
+auto_rollback = true
 
 [deploy]
-  strategy = "immediate"
+strategy = "immediate"
 
 [env]
-  LOG_LEVEL = "debug"
-  alertTime = "12"
-  campaignName = "Journey to the Center of the Earth Kingdom"
-  campaignAlias = "JTCEK"
-  discordVC = "Party"
+LOG_LEVEL = "debug"
+alertTime = "12"
+campaignName = "Journey to the Center of the Earth Kingdom"
+campaignAlias = "JTCEK"
+discordVC = "Party"
 
 [services]

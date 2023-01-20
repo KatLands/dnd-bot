@@ -3,6 +3,9 @@ on:
   push:
     branches: main
 
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -16,7 +19,12 @@ jobs:
           repository: dragid10/dnd-bot.git
           ref: main
 
-      - name: Login to Docker Hub
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl auth docker && docker login registry.fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Login to Flyctl registry
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -26,7 +34,8 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: dragid10/dnd-bot:latest,dragid10/dnd-bot:production
+          platforms: linux/amd64,linux/arm64
+          tags: registry.fly.io/dnd-bot:latest,registry.fly.io/dnd-bot:production
           build-args: |
             BUILDKIT_CONTEXT_KEEP_GIT_DIR=true
   deploy:
@@ -41,7 +50,7 @@ jobs:
           ref: main
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --detach --push --now
+      - run: flyctl deploy --now
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     needs: docker
