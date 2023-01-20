@@ -50,7 +50,7 @@ jobs:
           ref: main
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --now
+      - run: flyctl auth docker && docker login registry.fly.io && flyctl deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     needs: docker
