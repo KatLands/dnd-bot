@@ -36,7 +36,6 @@ try:
     campaign_name = bot_config["campaign"]["name"] or "D&D"
     campaign_alias = bot_config["campaign"]["alias"] or campaign_name
     discord_vc = bot_config["discord"]["vc"]
-
 except KeyError:
     # Fall back to environment variables
     from os import environ
@@ -189,17 +188,20 @@ async def register(ctx: Context):
 @bot.command()
 async def players(ctx: Context):
     players = tracker.get_players_for_guild(ctx.guild.id)
-    await ctx.message.channel.send(
-        embed=Embed().from_dict(
-            {
-                "title": "Registered Players",
-                "fields": [
-                    {"name": player["name"], "value": f"ID: {player['id']}"}
-                    for player in players
-                ],
-            }
+    if not players:
+        await ctx.message.channel.send(f"No players registered!")
+    else:
+        await ctx.message.channel.send(
+            embed=Embed().from_dict(
+                {
+                    "title": "Registered Players",
+                    "fields": [
+                        {"name": player["name"], "value": f"ID: {player['id']}"}
+                        for player in players
+                    ],
+                }
+            )
         )
-    )
 
 
 @bot.command()
@@ -250,6 +252,23 @@ async def list(ctx: Context):
     )
 
 
+@bot.command()
+async def cancel(ctx: Context):
+    guild_id = ctx.guild.id
+    player_id = ctx.author.id
+
+    # If player calling command isn't DM, then tell them so and return
+    if not tracker.is_player_dm(guild_id, player_id):
+        await ctx.message.reply(f"Sorry this is a DM-only command. Have the DM run this instead")
+        return
+
+    was_cancelled = tracker.cancel_session(guild_id)
+    if was_cancelled:
+        await ctx.message.channel.send(f"The upcoming session has been cancelled!")
+    else:
+        await ctx.message.reply(f"Ran into an error cancelling the session. Please try again")
+
+
 # Support rsvp [accept|decline]
 @bot.group()
 async def rsvp(ctx: Context):
@@ -261,6 +280,11 @@ async def rsvp(ctx: Context):
 
 @rsvp.command(name="accept")
 async def _accept(ctx: Context):
+    guild_id = ctx.guild.id
+    if tracker.is_session_cancelled(guild_id):
+        await ctx.message.reply(f"The upcoming session has been cancelled, so no need to RSVP")
+        return
+
     if not tracker.is_registered_player(ctx.guild.id, ctx.author):
         await ctx.message.reply(f"You are not a registered player in this campaign, so you can not rsvp")
     else:
@@ -291,6 +315,11 @@ async def _accept(ctx: Context):
 
 @rsvp.command(name="decline")
 async def _decline(ctx: Context):
+    guild_id = ctx.guild.id
+    if tracker.is_session_cancelled(guild_id):
+        await ctx.message.reply(f"The upcoming session has been cancelled, so no need to RSVP")
+        return
+
     if not tracker.is_registered_player(ctx.guild.id, ctx.author):
         await ctx.message.reply(f"You are not a registered player in this campaign so you can not rsvp")
     else:
@@ -321,7 +350,7 @@ async def vote(ctx: Context):
 
 
 @vote.command(name="cancel")
-async def _cancel(ctx: Context):
+async def _vote_cancel(ctx: Context):
     tracker.add_canceller_for_guild(ctx.guild.id, ctx.author)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
@@ -379,21 +408,37 @@ async def alert_dispatcher(force=False):
 
     # Check if all players have registered for the upcoming session (on the first day)
     for config in tracker.get_first_alert_configs(today):
+        guild_id = config["guild"]
+        if tracker.is_session_cancelled(guild_id):
+            logging.debug(f"Next session was cancelled! Won't alert")
+            await bt.cancel_alert_msg(config)
+            return
+
         if not tracker.is_full_group(config["guild"]):
             logging.debug("Group is not full")
             unanswered = tracker.get_unanswered_players(guild_id=config["guild"])
             await bt.first_alert(config, unanswered)
-
+            return
     # Check if all players have registered for the upcoming session (but on the second day)
     for config in tracker.get_second_alert_configs(today):
+        guild_id = config["guild"]
+        if tracker.is_session_cancelled(guild_id):
+            logging.debug(f"Next session was cancelled! Won't alert")
+            await bt.cancel_alert_msg(config)
+            return
+
         if not tracker.is_full_group(config["guild"]):
             unanswered = tracker.get_unanswered_players(guild_id=config["guild"])
             await bt.second_alert(config, unanswered)
+            return
 
     # DM the GM the accept/reject rsvp list
     for config in tracker.get_session_day_configs(today):
-        await bt.send_dm(config, tracker)
-    # Reset rsvp list
+        guild_id = config["guild"]
+        if not tracker.is_session_cancelled(guild_id):
+            await bt.send_dm(config, tracker)
+
+    # Reset rsvp list and session cancel flag
     for config in tracker.get_session_day_configs(day_before):
         bt.reset(config, tracker)
 

@@ -1,4 +1,5 @@
 from discord import Member
+from pymongo.results import UpdateResult
 
 from helpers import Collections
 
@@ -11,6 +12,7 @@ class Tracker:
         self.inventories = db[Collections.INVENTORIES]
         self.config = db[Collections.CONFIG]
         self.players = db[Collections.PLAYERS]
+        self.cancel_flag = db[Collections.CANCEL_SESSION]
 
     @staticmethod
     def _get_user(user):
@@ -63,17 +65,59 @@ class Tracker:
             return None
 
     def get_dm(self, guild_id):
-        pass
+        try:
+            guild_config: dict = self.get_config_for_guild(guild_id)
+            return guild_config["session-dm"]["id"]
+        except Exception:
+            return None
+
+    def get_session_cancel_flag(self, guild_id: int):
+        try:
+            res = self.config.find_one(
+                {"guild": guild_id}, {Collections.CONFIG: 1, "_id": 0}
+            )[Collections.CONFIG]
+            res = res[Collections.CANCEL_SESSION]
+            return res
+        except Exception as e:
+            return None
 
     def reset(self, guild_id):
         query = {"guild": guild_id}
         self.attendees.delete_one(query)
         self.decliners.delete_one(query)
         self.cancellers.delete_one(query)
+        self.reset_cancel_flag(guild_id)
 
     def skip(self, guild_id):
         query = {"guild": guild_id}
         self.db.config.update_one({query}, {"config.alerts": False})
+
+    def cancel_session(self, guild_id: int) -> bool:
+        guild_config = self.get_config_for_guild(guild_id)
+        guild_config.update({Collections.CANCEL_SESSION: True})
+        res: UpdateResult = self.config.update_one(
+            {"guild": guild_id},
+            {
+                "$set": {
+                    "config": guild_config
+                }
+            },
+            upsert=True
+        )
+        return True if res.acknowledged else False
+
+    def reset_cancel_flag(self, guild_id: int) -> bool:
+        res = self.config.update_one(
+            {"guild": guild_id},
+            {
+                "$set": {
+                    "config": {Collections.CANCEL_SESSION: False}
+                }
+            },
+            upsert=True
+        )
+
+        return True if res.acknowledged else False
 
     def add_attendee_for_guild(self, guild_id, attendee):
         return self.attendees.update_one(
@@ -133,6 +177,7 @@ class Tracker:
             meeting_room: int,
             first_alert: str,
             second_alert: str,
+            cancel_session: bool = False
     ):
         return self.config.update_one(
             {"guild": guild_id},
@@ -148,6 +193,7 @@ class Tracker:
                         "first-alert": first_alert,
                         "second-alert": second_alert,
                         "alerts": True,
+                        "cancel-session": cancel_session
                     },
                 }
             },
@@ -204,9 +250,16 @@ class Tracker:
         # check if attendees contains all elements of players
         return all(elem in attendees for elem in players)
 
-    def is_registered_player(self, guild_id: int, player):
+    def is_registered_player(self, guild_id: int, player) -> bool:
         players = self.get_players_for_guild(guild_id)
         return self._get_user(player) in players
+
+    def is_player_dm(self, guild_id: int, player_id: int) -> bool:
+        guild_dm_id = self.get_dm(guild_id)
+        return True if player_id == guild_dm_id else False
+
+    def is_session_cancelled(self, guild_id: int) -> bool:
+        return self.get_session_cancel_flag(guild_id)
 
     def get_unanswered_players(self, guild_id: int):
         players = {player["id"]: player["name"] for player in self.get_players_for_guild(guild_id)}

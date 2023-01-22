@@ -15,6 +15,7 @@ class Collections(str, Enum):
     INVENTORIES = "inventories"
     CONFIG = "config"
     PLAYERS = "players"
+    CANCEL_SESSION = "cancel-session"
 
 
 @unique
