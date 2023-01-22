@@ -268,10 +268,16 @@ class Tracker:
     def get_unanswered_players(self, guild_id: int):
         players = {player["id"]: player["name"] for player in self.get_players_for_guild(guild_id)}
         attendees = {att["id"]: att["name"] for att in self.get_attendees_for_guild(guild_id)}
-        # Players: a, b, c, d | Attendees: d, b
-        # Result: a, c
+        rejections = {rejecter["id"]: rejecter["name"] for rejecter in self.get_attendees_for_guild(guild_id)}
+
+        # Players: {'a', 'b', 'c', 'd'} | Attendees: {'b', 'd'} | Rejections: {'c'}
+        # set_players - set_attendees - set_rejections =
+        # Result: {'a'}
         # Return the difference of two or more sets as a new set. (i.e. all elements that are in this set but not the others.)
-        unanswered_players = list(set(players.keys()).difference(attendees.keys()))
+        unanswered_players = set(players.keys()) - set(attendees.keys()) - set(rejections.keys())
+
+        # Convert set into a list to make it easier to operate with
+        unanswered_players = list(unanswered_players)
         if len(unanswered_players) == len(players):
             unanswered_players = ["dnd-players"]
         return unanswered_players
