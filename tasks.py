@@ -11,18 +11,27 @@ class BotTasks:
     async def first_alert(self, config, unanswered) -> None:
         channel: Any = await self.bot.fetch_channel(config["config"]["meeting-room"])
         at_ids = list(map(helpers.callable_username, unanswered))
-
-        await channel.send(
-            f"{', '.join(at_ids)} Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
-        )
+        if "@dnd-players" in at_ids[0]:
+            await channel.send(
+                f"@dnd-players Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            )
+        else:
+            await channel.send(
+                f"{', '.join(at_ids)} Are we good for our D&D session? Please use either `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            )
 
     async def second_alert(self, config, unanswered) -> None:
         channel: Any = await self.bot.fetch_channel(config["config"]["meeting-room"])
         at_ids = list(map(helpers.callable_username, unanswered))
 
-        await channel.send(
-            f"Please RSVP: {','.join(at_ids)} `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
-        )
+        if "@dnd-players" in at_ids[0]:
+            await channel.send(
+                f"Please RSVP: @dnd-players `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            )
+        else:
+            await channel.send(
+                f"Please RSVP: {','.join(at_ids)} `{self.bot.command_prefix}rsvp accept` or `{self.bot.command_prefix}rsvp decline`."
+            )
 
     async def session_alert(self, config) -> None:
         channel: Any = await self.bot.fetch_channel(config["config"]["meeting-room"])

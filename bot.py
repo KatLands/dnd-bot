@@ -375,7 +375,7 @@ async def _create_session_event(ctx: Context) -> ScheduledEvent:
     server_id = ctx.guild.id
     session_vc_id = tracker.get_voice_channel_id(server_id)
     session_vc = bot.get_channel(session_vc_id)
-    # Get details about session in orde to create a discord event
+    # Get details about session in order to create a discord event
     sess_day, sess_time = tracker.get_campaign_session_dt(server_id)
     next_sess = helpers.get_next_session_day(sess_day, sess_time)
     return await ctx.guild.create_scheduled_event(
