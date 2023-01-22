@@ -235,7 +235,7 @@ async def skip(ctx: Context):
 
 @bot.command()
 async def list(ctx: Context):
-    accept, decline, dream, cancel = tracker.get_all(ctx.guild.id)
+    accept, decline, cancel = tracker.get_all(ctx.guild.id)
     await ctx.message.channel.send(
         embed=Embed().from_dict(
             {

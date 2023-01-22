@@ -11,7 +11,6 @@ est_tz = timezone("America/New_York")
 class Collections(str, Enum):
     ATTENDEES = "attendees"
     DECLINERS = "decliners"
-    DREAMERS = "dreamers"
     CANCELLERS = "cancellers"
     INVENTORIES = "inventories"
     CONFIG = "config"

@@ -8,7 +8,6 @@ class Tracker:
         self.attendees = db[Collections.ATTENDEES]
         self.decliners = db[Collections.DECLINERS]
         self.cancellers = db[Collections.CANCELLERS]
-        self.dreamers = db[Collections.DREAMERS]
         self.inventories = db[Collections.INVENTORIES]
         self.config = db[Collections.CONFIG]
         self.players = db[Collections.PLAYERS]
@@ -20,9 +19,8 @@ class Tracker:
     def get_all(self, guild_id):
         attendees = self.get_attendees_for_guild(guild_id)
         decliners = self.get_decliners_for_guild(guild_id)
-        dreamers = self.get_dreamers_for_guild(guild_id)
         cancellers = self.get_cancellers_for_guild(guild_id)
-        return (attendees, decliners, dreamers, cancellers)
+        return attendees, decliners, cancellers
 
     def get_attendees_for_guild(self, guild_id):
         try:
@@ -45,25 +43,6 @@ class Tracker:
             return self.cancellers.find_one(
                 {"guild": guild_id}, {Collections.CANCELLERS: 1, "_id": 0}
             )[Collections.CANCELLERS]
-        except TypeError:
-            return []
-
-    def get_dreamers_for_guild(self, guild_id):
-        try:
-            return self.dreamers.find_one(
-                {"guild": guild_id}, {Collections.DREAMERS: 1, "_id": 0}
-            )[Collections.DREAMERS]
-        except TypeError:
-            return []
-
-    def get_inventories_for_guild(self, guild_id):
-        return self.inventories.find({"guild": guild_id})
-
-    def get_inventory_for_player(self, guild_id, player):
-        try:
-            return self.inventories.find_one(
-                {"guild": guild_id, "player": self._get_user(player)}
-            )["inv"]
         except TypeError:
             return []
 
@@ -91,7 +70,6 @@ class Tracker:
         self.attendees.delete_one(query)
         self.decliners.delete_one(query)
         self.cancellers.delete_one(query)
-        self.dreamers.delete_one(query)
 
     def skip(self, guild_id):
         query = {"guild": guild_id}
@@ -133,18 +111,6 @@ class Tracker:
             {"guild": guild_id}, {"$pull": {"cancellers": self._get_user(canceller)}}
         )
 
-    def add_dreamer_for_guild(self, guild_id, dreamer):
-        return self.dreamers.update_one(
-            {"guild": guild_id},
-            {"$addToSet": {"dreamers": self._get_user(dreamer)}},
-            upsert=True,
-        )
-
-    def rm_dreamer_for_guild(self, guild_id, dreamer):
-        return self.dreamers.update_one(
-            {"guild": guild_id}, {"$pull": {"dreamers": self._get_user(dreamer)}}
-        )
-
     def add_player_for_guild(self, guild_id, player):
         return self.players.update_one(
             {"guild": guild_id},
@@ -155,29 +121,6 @@ class Tracker:
     def rm_player_for_guild(self, guild_id, player):
         return self.players.update_one(
             {"guild": guild_id}, {"$pull": {"players": self._get_user(player)}}
-        )
-
-    def add_to_player_inventory(self, guild_id, player, item, qty):
-        return self.inventories.update_one(
-            {"guild": guild_id, "player": self._get_user(player)},
-            {"$addToSet": {"inv": {"item": item.strip(), "qty": qty}}},
-            upsert=True,
-        )
-
-    def rm_from_player_inventory(self, guild_id, player, item):
-        return self.inventories.update_one(
-            {"guild": guild_id, "player": self._get_user(player)},
-            {"$pull": {"inv": {"item": item}}},
-        )
-
-    def update_player_inventory(self, guild_id, player, item, qty):
-        return self.inventories.update_one(
-            {
-                "guild": guild_id,
-                "player": self._get_user(player),
-                "inv.item": item.strip(),
-            },
-            {"$set": {"inv.$.qty": qty}},
         )
 
     def create_guild_config(
