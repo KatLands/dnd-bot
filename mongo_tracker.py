@@ -107,11 +107,13 @@ class Tracker:
         return True if res.acknowledged else False
 
     def reset_cancel_flag(self, guild_id: int) -> bool:
+        guild_config = self.get_config_for_guild(guild_id)
+        guild_config.update({Collections.CANCEL_SESSION: False})
         res = self.config.update_one(
             {"guild": guild_id},
             {
                 "$set": {
-                    "config": {Collections.CANCEL_SESSION: False}
+                    "config": guild_config
                 }
             },
             upsert=True
